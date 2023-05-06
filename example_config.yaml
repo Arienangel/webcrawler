@@ -1,0 +1,41 @@
+app:
+  logger_level: 20
+ptt:
+  run: true
+  forum:
+    - 'Gossiping'
+  n: 20
+  send: true
+  avatar: null
+  webhook:
+    - null
+plurk:
+  run: true
+  query:
+    - 'plurk'
+  n: 60
+  send: true
+  avatar: null
+  webhook:
+    - null
+facebook:
+  run: true
+  page:
+    - 'facebook'
+  n: 10
+  headless: true
+  delay: 5
+  send: true
+  webhook:
+    - null
+dcard:
+  run: true
+  forum:
+    - 'trending'
+  n: 20
+  headless: true
+  delay: 5
+  send: true
+  avatar: null
+  webhook:
+    - null
