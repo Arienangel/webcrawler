@@ -14,16 +14,16 @@ import yaml
 from pyquery import PyQuery as pq
 from selenium.webdriver.common.by import By
 
-logging.basicConfig(format='%(asctime)s  %(name)s  %(levelname)s: %(message)s')
+logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s')
 with open('config.yaml', encoding='utf-8') as f:
     conf = yaml.load(f, yaml.SafeLoader)
 if not os.path.exists('data'): os.makedirs('data')
-logger_level = conf['app']['logger_level']
+logging_level = conf['app']['logger_level']
 
 
 async def ptt(forum: str, send: bool = True, **kwargs):
     logger = logging.getLogger(f'PTT/{forum}')
-    logger.level = logger_level
+    logger.level = logging_level
     logger.info(f'Start PTT {forum}')
     base = 'https://www.ptt.cc'
 
@@ -36,7 +36,7 @@ async def ptt(forum: str, send: bool = True, **kwargs):
                     body = await response.text()
                     r = pq(body)
             except aiohttp.web.HTTPException as E:
-                logger.warning(f'PTT {forum} {type(E).__name__}')
+                logger.warning(f'PTT/{forum}@{__name__}: {type(E).__name__}')
                 break
             if r('div.r-list-sep'):  # 移除置底文
                 posts.extend([f"{base}{pq(s).find('div.title a').attr('href')}" for s in r('div.r-list-sep').prev_all('div.r-ent')][::-1])
@@ -54,7 +54,8 @@ async def ptt(forum: str, send: bool = True, **kwargs):
                 body = await response.text()
                 r = pq(body)
         except aiohttp.web.HTTPException as E:
-            logger.warning(f'PTT {forum} {type(E).__name__}')
+            logger.warning(f'PTT/{forum}@{__name__}: {type(E).__name__}')
+            logger.debug(f'{post_url}@{__name__}: {type(E).__name__}')
             raise E
         if r('span.article-meta-value'):
             author = pq(r('span.article-meta-value')[0]).text()
@@ -76,13 +77,14 @@ async def ptt(forum: str, send: bool = True, **kwargs):
             try:
                 await webhook.send(username=f'PTT/{forum}', embed=embed, avatar_url=conf['ptt']['avatar'])
             except discord.HTTPException as E:
-                logger.warning(f'Discord {type(E).__name__}')
+                logger.warning(f'Discord@{__name__}: {type(E).__name__}')
 
     async with aiohttp.ClientSession(headers={"Cookie": "over18=1"}) as session:
         posts = await get_forum(forum=forum, n=conf['ptt']['n'], **kwargs)
         async with aiosqlite.connect('data/ptt.db') as db:
             await db.execute(
-                f'CREATE TABLE IF NOT EXISTS `{forum}` ("url", "author", "title", "time" INTEGER, "content", PRIMARY KEY("time" AUTOINCREMENT));')
+                f'CREATE TABLE IF NOT EXISTS `{forum}` ("url" UNIQUE, "author", "title", "time" INTEGER, "content", PRIMARY KEY("time" AUTOINCREMENT));'
+            )
             for post_url in posts:
                 cursor = await db.execute(f'SELECT url FROM `{forum}` WHERE url=?;', [post_url])
                 if not await cursor.fetchall():
@@ -92,7 +94,7 @@ async def ptt(forum: str, send: bool = True, **kwargs):
                     except aiohttp.web.HTTPException:
                         continue
                     except Exception as E:
-                        logger.error(f'{type(E).__name__}: {E}')
+                        logger.error(f'@{__name__}: {type(E).__name__}: {E}')
                         continue
                     await db.execute(f'INSERT INTO `{forum}` VALUES (?,?,?,?,?);',
                                      [post['post_url'], post['author'], post['title'], post['time'], post['content']])
@@ -104,10 +106,10 @@ async def ptt(forum: str, send: bool = True, **kwargs):
 
 async def plurk(query: str, send: bool = True, **kwargs):
     logger = logging.getLogger(f'Plurk/{query}')
-    logger.level = logger_level
+    logger.level = logging_level
     logger.info(f'Start Plurk {query}')
 
-    async def get_search(query: str, n: int = 30, **kwargs):
+    async def get_search(query: str, n: int = 30, **kwargs) -> tuple[list[dict], dict]:
         search_url = 'https://www.plurk.com/Search/search2'
         post_body = {"query": query}
         plurks = list()
@@ -120,7 +122,7 @@ async def plurk(query: str, send: bool = True, **kwargs):
                     users.update(body['users'])
                     post_body.update({'after_id': plurks[-1]['id']})
             except aiohttp.web.HTTPException as E:
-                logger.warning(f'Plurk search {type(E).__name__}')
+                logger.warning(f'Plurk/{query}@{__name__}: {type(E).__name__}')
         return plurks[:n][::-1], users
 
     async def format_plurk(plurk: dict, users: dict, **kwargs) -> dict:
@@ -140,7 +142,7 @@ async def plurk(query: str, send: bool = True, **kwargs):
             try:
                 await webhook.send(username=f'Plurk/{query}', embed=embed, avatar_url=conf['plurk']['avatar'])
             except discord.HTTPException as E:
-                logger.warning(f'Discord {type(E).__name__}')
+                logger.warning(f'Discord@{__name__}: {type(E).__name__}')
 
     async with aiohttp.ClientSession() as session:
         plurks, users = await get_search(query=query, n=conf['plurk']['n'], **kwargs)
@@ -155,7 +157,7 @@ async def plurk(query: str, send: bool = True, **kwargs):
                     try:
                         if send: await send_webhooks(query=query, **post, **kwargs)
                     except Exception as E:
-                        logger.error(f'{type(E).__name__}: {E}')
+                        logger.error(f'@{__name__}: {type(E).__name__}: {E}')
                         continue
                     await db.execute(f'INSERT INTO `{query}` VALUES (?,?,?,?,?);',
                                      [post['post_url'], post['id'], post['author'], post['time'], post['content']])
@@ -167,12 +169,13 @@ async def plurk(query: str, send: bool = True, **kwargs):
 
 async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs):
     logger = logging.getLogger(f'Facebook/{page}')
-    logger.level = logger_level
+    logger.level = logging_level
     logger.info(f'Start Facebook {page}')
 
     async def get_page(page: str, n: int = 30, delay: int = 3, **kwargs) -> list[str]:
         try:
-            driver.get(f'https://www.facebook.com/{page}')
+            url = f'https://www.facebook.com/{page}'
+            driver.get(url)
             await asyncio.sleep(delay)
             try:
                 driver.find_element(By.CSS_SELECTOR, 'div[role="dialog"]>div>div>i.x1b0d499').click()  # 移除登入視窗
@@ -181,7 +184,9 @@ async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs
             prevhigh = driver.execute_script("return document.body.scrollHeight;")
             while len(driver.find_elements(By.CSS_SELECTOR, 'div.xh8yej3>* a.x1heor9g.xt0b8zv.xo1l8bm')) < n:
                 if driver.current_url.split('?', 1)[0] == 'https://www.facebook.com/login/':
-                    raise Exception('Require login')
+                    logger.info(f'Facebook/{page}@{__name__}: Require login')
+                    logger.debug(f'{url}@{__name__}: Require login')
+                    return []
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 await asyncio.sleep(delay)
                 high = driver.execute_script("return document.body.scrollHeight;")  # scroll to end
@@ -191,17 +196,20 @@ async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs
                 post.get_attribute('href').split('?')[0] for post in driver.find_elements(By.CSS_SELECTOR, 'div.xh8yej3>* a.x1heor9g.xt0b8zv.xo1l8bm')
             ][:n][::-1]
         except selenium.common.exceptions.WebDriverException as E:
-            logger.warning(f'Facebook page {page} {type(E).__name__}')
+            logger.warning(f'Facebook/{page}@{__name__}: {type(E).__name__}')
             raise E
 
-    async def get_post(post_url: str, delay: int = 3, **kwargs):
+    async def get_post(post_url: str, delay: int = 3, **kwargs) -> dict:
         try:
             driver.get(post_url)
         except selenium.common.exceptions.WebDriverException as E:
-            logger.warning(f'Facebook post {type(E).__name__}')
+            logger.warning(f'Facebook/{page}@{__name__}: {type(E).__name__}')
+            logger.debug(f'{post_url}@{__name__}: {type(E).__name__}')
             raise E
         if driver.current_url.split('?', 1)[0] == 'https://www.facebook.com/login/':
-            raise Exception('Require login')
+            logger.info(f'Facebook/{page}@{__name__}: Require login')
+            logger.debug(f'{post_url}@{__name__}: Require login')
+            raise selenium.common.exceptions.WebDriverException
         base, _, id, _ = driver.find_element(By.CSS_SELECTOR, 'link[rel="canonical"]').get_attribute('href').rsplit('/', 3)
         url = f'{base}/{id}'
         encrypt_url = driver.find_element(By.CSS_SELECTOR, 'meta[property="og:url"]').get_attribute('content')
@@ -221,7 +229,7 @@ async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs
                 try:
                     await webhook.send(username=f'Facebook/{page}', embed=embed, avatar_url=avatar)
                 except discord.HTTPException as E:
-                    logger.warning(f'Discord {type(E).__name__}')
+                    logger.warning(f'Discord@{__name__}: {type(E).__name__}')
 
     options = uc.ChromeOptions()
     options.headless = headless
@@ -248,24 +256,25 @@ async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs
                     except selenium.common.exceptions.WebDriverException:
                         continue
                     except Exception as E:
-                        logger.error(f'{type(E).__name__}: {E}')
+                        logger.error(f'@{__name__}:{type(E).__name__}: {E}')
                         continue
                     await db.execute(f'INSERT INTO `{page}` VALUES (?,?,?,?,?);',
-                                     [post['id'], post['url'], post['encrypt_url'], post['time'], post['content']])
+                                     [post['id'], post['post_url'], post['encrypt_url'], post['time'], post['content']])
                     await db.commit()
                 else:
                     continue
     logger.info(f'Finish Facebook {page}')
 
 
-async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs):
+async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs) -> list[str]:
     logger = logging.getLogger(f'Dcard/{forum}')
-    logger.level = logger_level
+    logger.level = logging_level
     logger.info(f'Start Dcard {forum}')
 
     async def get_forum(forum: str, n: int = 30, delay: int = 3, **kwargs):
         try:
-            driver.get(f'https://www.dcard.tw/f/{forum}?latest=true')
+            url = f'https://www.dcard.tw/f/{forum}?latest=true'
+            driver.get(url)
             await asyncio.sleep(delay)
             try:
                 for _ in range(3):
@@ -273,7 +282,9 @@ async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs):
                     await asyncio.sleep(delay)
                 else:
                     if driver.find_element(By.CSS_SELECTOR, '#challenge-stage'):
-                        raise Exception(f'Captcha failed @{forum}')
+                        logger.info(f'Dcard/{forum}@{__name__}: Captcha failed')
+                        logger.debug(f'{url}@{__name__}: Captcha failed')
+                        return []
             except selenium.common.exceptions.NoSuchElementException:
                 pass
             prevhigh = driver.execute_script("return document.body.scrollHeight;")
@@ -288,11 +299,12 @@ async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs):
             logger.warning(f'Dcard forum {forum} {type(E).__name__}')
             raise E
 
-    async def get_post(post_url: str, delay: int = 3, **kwargs):
+    async def get_post(post_url: str, delay: int = 3, **kwargs) -> dict:
         try:
             driver.get(post_url)
         except selenium.common.exceptions.WebDriverException as E:
-            logger.warning(f'Dcard post {type(E).__name__}')
+            logger.warning(f'Dcard/{forum}@{__name__}: {type(E).__name__}')
+            logger.debug(f'{post_url}@{__name__}: {type(E).__name__}')
             raise E
         _, forum, _, id = post_url.rsplit('/', 3)
         author = driver.find_element(By.CSS_SELECTOR, 'div.a12lr2bo').text
@@ -318,7 +330,7 @@ async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs):
                 try:
                     await webhook.send(username=f'Dcard/{forum}', embed=embed)
                 except discord.HTTPException as E:
-                    logger.warning(f'Discord {type(E).__name__}')
+                    logger.warning(f'Discord@{__name__}: {type(E).__name__}')
 
     options = uc.ChromeOptions()
     options.headless = headless
@@ -341,7 +353,7 @@ async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs):
                     except selenium.common.exceptions.WebDriverException:
                         continue
                     except Exception as E:
-                        logger.error(f'{type(E).__name__}: {E}')
+                        logger.error(f'@{__name__}: {type(E).__name__}: {E}')
                         continue
                     await db.execute(f'INSERT INTO `{forum}` VALUES (?,?,?,?,?,?,?);',
                                      [post['id'], post['post_url'], post['author'], post['avatar'], post['title'], post['time'], post['content']])
@@ -353,7 +365,7 @@ async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs):
 
 async def main():
     logger = logging.getLogger('app')
-    logger.level = logger_level
+    logger.level = logging_level
     logger.info(f'Start webcrawling')
 
     coro = list()
@@ -373,7 +385,7 @@ async def main():
     R = await asyncio.gather(*coro, return_exceptions=True)
     for i, E in enumerate(R):
         if isinstance(E, Exception):
-            logger.error(f'{type(E).__name__}: {E} @{coro[i]}')
+            logger.critical(f'app@{coro[i]}: {type(E).__name__}: {E}')
     logger.info('Finish webcrawling')
 
 
