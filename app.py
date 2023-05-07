@@ -91,14 +91,14 @@ async def ptt(forum: str, send: bool = True, **kwargs):
                     try:
                         post = await get_post(post_url, **kwargs)
                         if send: await send_webhooks(**post, **kwargs)
+                        await db.execute(f'INSERT INTO `{forum}` VALUES (?,?,?,?,?);',
+                                         [post['post_url'], post['author'], post['title'], post['time'], post['content']])
+                        await db.commit()
                     except aiohttp.web.HTTPException:
                         continue
                     except Exception as E:
                         logger.error(f'@{__name__}: {type(E).__name__}: {E}')
                         continue
-                    await db.execute(f'INSERT INTO `{forum}` VALUES (?,?,?,?,?);',
-                                     [post['post_url'], post['author'], post['title'], post['time'], post['content']])
-                    await db.commit()
                 else:
                     continue
     logger.info(f'Finish PTT {forum}')
@@ -156,12 +156,12 @@ async def plurk(query: str, send: bool = True, **kwargs):
                 if not await cursor.fetchall():
                     try:
                         if send: await send_webhooks(query=query, **post, **kwargs)
+                        await db.execute(f'INSERT INTO `{query}` VALUES (?,?,?,?,?);',
+                                         [post['post_url'], post['id'], post['author'], post['time'], post['content']])
+                        await db.commit()
                     except Exception as E:
                         logger.error(f'@{__name__}: {type(E).__name__}: {E}')
                         continue
-                    await db.execute(f'INSERT INTO `{query}` VALUES (?,?,?,?,?);',
-                                     [post['post_url'], post['id'], post['author'], post['time'], post['content']])
-                    await db.commit()
                 else:
                     continue
     logger.info(f'Finish Plurk {query}')
@@ -217,7 +217,7 @@ async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs
         page = driver.find_element(By.CSS_SELECTOR, 'span.fwb>a').text
         time = int(driver.find_element(By.CSS_SELECTOR, 'abbr._5ptz').get_attribute('data-utime'))
         content = driver.find_element(By.CSS_SELECTOR, 'div._5pbx').text
-        return {'page': page, 'avatar': avatar, 'time': time, 'content': content, 'id': id, 'url': url, 'encrypt_url': encrypt_url}
+        return {'page': page, 'avatar': avatar, 'time': time, 'content': content, 'id': id, 'post_url': url, 'encrypt_url': encrypt_url}
 
     async def send_webhooks(page, avatar, time, content, post_url, **kwargs):
         embed = discord.Embed(description=content)
@@ -240,7 +240,7 @@ async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs
             return
         async with aiosqlite.connect('data/facebook.db') as db:
             await db.execute(
-                f'CREATE TABLE IF NOT EXISTS `{page}` ("id" INTEGER UNIQUE, "url", "encrypt_url", "time" INTEGAR, "content", PRIMARY KEY("id" AUTOINCREMENT));'
+                f'CREATE TABLE IF NOT EXISTS `{page}` ("id" INTEGER, "url", "encrypt_url", "time" INTEGAR, "content");'
             )
             for post_url in posts:
                 cursor = await db.execute(f'SELECT url, encrypt_url FROM `{page}` WHERE url=? or encrypt_url=?;', [post_url, post_url])
@@ -252,15 +252,22 @@ async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs
                     try:
                         await asyncio.sleep(delay)
                         post = await get_post(post_url, **kwargs)
-                        if send: await send_webhooks(**post, **kwargs)
+                        cursor = await db.execute(f'SELECT id FROM `{page}` WHERE id=?;', [post['id']])
+                        if not await cursor.fetchall():
+                            if send: await send_webhooks(**post, **kwargs)
+                            await db.execute(f'INSERT INTO `{page}` VALUES (?,?,?,?,?);',
+                                             [post['id'], post['post_url'], post['encrypt_url'], post['time'], post['content']])
+                            await db.commit()
+                        else:
+                            await db.execute(f'INSERT INTO `{page}` VALUES (?,?,?,?,?);',
+                                             [post['id'], post['post_url'], post['encrypt_url'], None, None])
+                            await db.commit()
+                            logger.debug(f'@{__name__}: Repeated post id')
                     except selenium.common.exceptions.WebDriverException:
                         continue
                     except Exception as E:
-                        logger.error(f'@{__name__}:{type(E).__name__}: {E}')
+                        logger.error(f'@{__name__}: {type(E).__name__}: {E}')
                         continue
-                    await db.execute(f'INSERT INTO `{page}` VALUES (?,?,?,?,?);',
-                                     [post['id'], post['post_url'], post['encrypt_url'], post['time'], post['content']])
-                    await db.commit()
                 else:
                     continue
     logger.info(f'Finish Facebook {page}')
@@ -350,14 +357,14 @@ async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs) 
                         await asyncio.sleep(delay)
                         post = await get_post(post_url, **kwargs)
                         if send: await send_webhooks(**post, **kwargs)
+                        await db.execute(f'INSERT INTO `{forum}` VALUES (?,?,?,?,?,?,?);',
+                                         [post['id'], post['post_url'], post['author'], post['avatar'], post['title'], post['time'], post['content']])
+                        await db.commit()
                     except selenium.common.exceptions.WebDriverException:
                         continue
                     except Exception as E:
                         logger.error(f'@{__name__}: {type(E).__name__}: {E}')
                         continue
-                    await db.execute(f'INSERT INTO `{forum}` VALUES (?,?,?,?,?,?,?);',
-                                     [post['id'], post['post_url'], post['author'], post['avatar'], post['title'], post['time'], post['content']])
-                    await db.commit()
                 else:
                     continue
     logger.info(f'Finish Dcard {forum}')
