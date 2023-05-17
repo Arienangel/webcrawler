@@ -1,7 +1,10 @@
 import asyncio
+import inspect
 import logging
-import os
 import math
+import os
+import re
+
 import aiohttp
 import aiohttp.web
 import aiosqlite
@@ -11,7 +14,6 @@ import discord
 import selenium.common.exceptions
 import undetected_chromedriver as uc
 import yaml
-import inspect
 from pyquery import PyQuery as pq
 from selenium.webdriver.common.by import By
 
@@ -395,7 +397,8 @@ async def cna(send: bool = True, **kwargs):
             logger.debug(f'{page_url}@{inspect.stack()[0][3]}: {type(E).__name__}')
             raise E
         title = r('div.centralContent h1').text()
-        time = round(dateutil.parser.parse(r('div.centralContent div.timeBox').text()).timestamp())
+        time = re.match('\d{4}/\d{1,2}/\d{1,2} \d{2}:\d{2}', r('div.centralContent div.timeBox').text()).group(0)
+        time = round(dateutil.parser.parse(time).timestamp())
         content = pq(r('div.centralContent div.paragraph')[0]).find('p').text()
         return {'title': title, 'time': time, 'content': content, 'page_url': page_url}
 

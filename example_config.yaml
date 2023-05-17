@@ -39,3 +39,13 @@ dcard:
   avatar: null
   webhook:
     - null
+cna:
+  run: true
+  keywords:
+    - '社會'
+  n: 99
+  send: true
+  avatar: null
+  webhook:
+    - null
+    
