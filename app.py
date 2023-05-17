@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-
+import math
 import aiohttp
 import aiohttp.web
 import aiosqlite
@@ -25,7 +25,7 @@ logging_level = conf['app']['logger_level']
 async def ptt(forum: str, send: bool = True, **kwargs):
     logger = logging.getLogger(f'PTT/{forum}')
     logger.level = logging_level
-    logger.info(f'Start PTT {forum}')
+    logger.info(f'Start PTT/{forum}')
     base = 'https://www.ptt.cc'
 
     async def get_forum(forum: str, n: int = 30, **kwargs) -> list[str]:
@@ -83,9 +83,7 @@ async def ptt(forum: str, send: bool = True, **kwargs):
     async with aiohttp.ClientSession(headers={"Cookie": "over18=1"}) as session:
         posts = await get_forum(forum=forum, n=conf['ptt']['n'], **kwargs)
         async with aiosqlite.connect('data/ptt.db') as db:
-            await db.execute(
-                f'CREATE TABLE IF NOT EXISTS `{forum}` ("url" UNIQUE, "author", "title", "time" INTEGER, "content", PRIMARY KEY("time" AUTOINCREMENT));'
-            )
+            await db.execute(f'CREATE TABLE IF NOT EXISTS `{forum}` ("url" UNIQUE, "author", "title", "time" INTEGER, "content");')
             for post_url in posts:
                 cursor = await db.execute(f'SELECT url FROM `{forum}` WHERE url=?;', [post_url])
                 if not await cursor.fetchall():
@@ -108,7 +106,7 @@ async def ptt(forum: str, send: bool = True, **kwargs):
 async def plurk(query: str, send: bool = True, **kwargs):
     logger = logging.getLogger(f'Plurk/{query}')
     logger.level = logging_level
-    logger.info(f'Start Plurk {query}')
+    logger.info(f'Start Plurk/{query}')
 
     async def get_search(query: str, n: int = 30, **kwargs) -> tuple[list[dict], dict]:
         search_url = 'https://www.plurk.com/Search/search2'
@@ -148,9 +146,7 @@ async def plurk(query: str, send: bool = True, **kwargs):
     async with aiohttp.ClientSession() as session:
         plurks, users = await get_search(query=query, n=conf['plurk']['n'], **kwargs)
         async with aiosqlite.connect('data/plurk.db') as db:
-            await db.execute(
-                f'CREATE TABLE IF NOT EXISTS `{query}` ("url", "id" INTEGER UNIQUE, "author", "time" INTEGAR, "content", PRIMARY KEY("id" AUTOINCREMENT));'
-            )
+            await db.execute(f'CREATE TABLE IF NOT EXISTS `{query}` ("url", "id" INTEGER UNIQUE, "author", "time" INTEGAR, "content");')
             for post in plurks:
                 post = await format_plurk(post, users, **kwargs)
                 cursor = await db.execute(f'SELECT url FROM `{query}` WHERE url=?;', [post['post_url']])
@@ -171,7 +167,7 @@ async def plurk(query: str, send: bool = True, **kwargs):
 async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs):
     logger = logging.getLogger(f'Facebook/{page}')
     logger.level = logging_level
-    logger.info(f'Start Facebook {page}')
+    logger.info(f'Start Facebook/{page}')
 
     async def get_page(page: str, n: int = 30, delay: int = 3, **kwargs) -> list[str]:
         try:
@@ -179,7 +175,7 @@ async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs
             driver.get(url)
             await asyncio.sleep(delay)
             try:
-                driver.find_element(By.CSS_SELECTOR, 'div[role="dialog"]>div>div>i.x1b0d499').click()  # 移除登入視窗
+                driver.find_element(By.CSS_SELECTOR, 'div[role="dialog"]>div>div>i.x1b0d499').click_safe()  # 移除登入視窗
             except selenium.common.exceptions.NoSuchElementException:
                 pass
             prevhigh = driver.execute_script("return document.body.scrollHeight;")
@@ -233,16 +229,14 @@ async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs
                     logger.warning(f'Discord@{inspect.stack()[0][3]}: {type(E).__name__}')
 
     options = uc.ChromeOptions()
-    options.headless = headless
+    if headless: options.add_argument('--headless')
     with uc.Chrome(options=options) as driver:
         try:
             posts = await get_page(page=page, n=conf['facebook']['n'], delay=conf['facebook']['delay'], **kwargs)
         except selenium.common.exceptions.WebDriverException:
             return
         async with aiosqlite.connect('data/facebook.db') as db:
-            await db.execute(
-                f'CREATE TABLE IF NOT EXISTS `{page}` ("id" INTEGER, "url", "encrypt_url", "time" INTEGAR, "content");'
-            )
+            await db.execute(f'CREATE TABLE IF NOT EXISTS `{page}` ("id" INTEGER, "url", "encrypt_url", "time" INTEGAR, "content");')
             for post_url in posts:
                 cursor = await db.execute(f'SELECT url, encrypt_url FROM `{page}` WHERE url=? or encrypt_url=?;', [post_url, post_url])
                 if not await cursor.fetchall():
@@ -277,7 +271,7 @@ async def facebook(page: str, send=True, headless=True, delay: int = 3, **kwargs
 async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs) -> list[str]:
     logger = logging.getLogger(f'Dcard/{forum}')
     logger.level = logging_level
-    logger.info(f'Start Dcard {forum}')
+    logger.info(f'Start Dcard/{forum}')
 
     async def get_forum(forum: str, n: int = 30, delay: int = 3, **kwargs):
         try:
@@ -286,7 +280,7 @@ async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs) 
             await asyncio.sleep(delay)
             try:
                 for _ in range(3):
-                    driver.find_element(By.CSS_SELECTOR, '#challenge-stage').click()  # 移除登入視窗
+                    driver.find_element(By.CSS_SELECTOR, '#challenge-stage').click_safe()  # 移除登入視窗
                     await asyncio.sleep(delay)
                 else:
                     if driver.find_element(By.CSS_SELECTOR, '#challenge-stage'):
@@ -341,7 +335,7 @@ async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs) 
                     logger.warning(f'Discord@{inspect.stack()[0][3]}: {type(E).__name__}')
 
     options = uc.ChromeOptions()
-    options.headless = headless
+    if headless: options.add_argument('--headless')
     with uc.Chrome(options=options) as driver:
         try:
             posts = await get_forum(forum=forum, n=conf['dcard']['n'], delay=conf['dcard']['delay'], **kwargs)
@@ -349,8 +343,7 @@ async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs) 
             return
         async with aiosqlite.connect('data/dcard.db') as db:
             await db.execute(
-                f'CREATE TABLE IF NOT EXISTS `{forum}` ("id" INTEGER UNIQUE, "url", "author", "avatar", "title", "time" INTEGAR, "content", PRIMARY KEY("id" AUTOINCREMENT));'
-            )
+                f'CREATE TABLE IF NOT EXISTS `{forum}` ("id" INTEGER UNIQUE, "url", "author", "avatar", "title", "time" INTEGAR, "content");')
             for post_url in posts:
                 cursor = await db.execute(f'SELECT url FROM `{forum}` WHERE url=?;', [post_url])
                 if not await cursor.fetchall():
@@ -371,6 +364,71 @@ async def dcard(forum: str, send=True, headless=True, delay: int = 3, **kwargs) 
     logger.info(f'Finish Dcard {forum}')
 
 
+async def cna(send: bool = True, **kwargs):
+    logger = logging.getLogger(f'CNA')
+    logger.level = logging_level
+    logger.info(f'Start CNA')
+
+    async def get_category(keywords: list[str], n: int = 100, **kwargs) -> tuple[str]:
+        url = 'https://www.cna.com.tw/cna2018api/api/WNewsList'
+        page = list()
+        for x in range(math.ceil(n / 100)):
+            try:
+                post_body = {"action": "0", "category": "aall", "pagesize": "20", "pageidx": x + 1}
+                async with session.post(url, data=post_body) as response:
+                    body = await response.json()
+                    for i in body['ResultData']['Items']:
+                        for keyword in keywords:
+                            if keyword in i['HeadLine']:
+                                page.append(i['PageUrl'])
+            except aiohttp.web.HTTPException as E:
+                logger.warning(f'CNA@{inspect.stack()[0][3]}: {type(E).__name__}')
+        return page
+
+    async def get_page(page_url: str, **kwargs) -> dict:
+        try:
+            async with session.get(page_url) as response:
+                body = await response.text()
+                r = pq(body)
+        except aiohttp.web.HTTPException as E:
+            logger.warning(f'CNA page@{inspect.stack()[0][3]}: {type(E).__name__}')
+            logger.debug(f'{page_url}@{inspect.stack()[0][3]}: {type(E).__name__}')
+            raise E
+        title = r('div.centralContent h1').text()
+        time = round(dateutil.parser.parse(r('div.centralContent div.timeBox').text()).timestamp())
+        content = pq(r('div.centralContent div.paragraph')[0]).find('p').text()
+        return {'title': title, 'time': time, 'content': content, 'page_url': page_url}
+
+    async def send_webhooks(title, time, content, page_url, **kwargs):
+        embed = discord.Embed(title=title, description=content, url=page_url)
+        embed.add_field(name='文章網址', value=page_url, inline=False)
+        embed.add_field(name='時間', value=f'<t:{time}>', inline=False)
+        for webhook in [discord.Webhook.from_url(webhook, session=session) for webhook in conf['cna']['webhook']]:
+            try:
+                await webhook.send(username=f'中央社', embed=embed, avatar_url=conf['cna']['avatar'])
+            except discord.HTTPException as E:
+                logger.warning(f'Discord@{inspect.stack()[0][3]}: {type(E).__name__}')
+
+    async with aiohttp.ClientSession() as session:
+        pages = await get_category(keywords=conf['cna']['keywords'], n=conf['cna']['n'], **kwargs)
+        async with aiosqlite.connect('data/cna.db') as db:
+            await db.execute(f'CREATE TABLE IF NOT EXISTS `news` ("url" UNIQUE, "title", "time" INTEGAR, "content");')
+            for page_url in pages:
+                cursor = await db.execute(f'SELECT url FROM `news` WHERE url=?;', [page_url])
+                if not await cursor.fetchall():
+                    try:
+                        post = await get_page(page_url, **kwargs)
+                        if send: await send_webhooks(**post, **kwargs)
+                        await db.execute(f'INSERT INTO `news` VALUES (?,?,?,?);', [post['page_url'], post['title'], post['time'], post['content']])
+                        await db.commit()
+                    except Exception as E:
+                        logger.error(f'@{inspect.stack()[0][3]}: {type(E).__name__}: {E}')
+                        continue
+                else:
+                    continue
+    logger.info(f'Finish CNA')
+
+
 async def main():
     logger = logging.getLogger('app')
     logger.level = logging_level
@@ -389,6 +447,7 @@ async def main():
             dcard(forum=forum, send=conf['facebook']['send'], headless=conf['facebook']['headless'], delay=conf['facebook']['delay'])
             for forum in conf['dcard']['forum']
         ])
+    if conf['cna']['run']: coro.extend([cna(send=conf['cna']['send'])])
 
     R = await asyncio.gather(*coro, return_exceptions=True)
     for i, E in enumerate(R):
@@ -397,4 +456,5 @@ async def main():
     logger.info('Finish webcrawling')
 
 
-asyncio.run(main())
+if __name__ == '__main__':
+    asyncio.run(main())
