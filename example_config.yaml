@@ -1,51 +1,34 @@
 app:
   logger_level: 20
+webdriver:
+  version: 117
+  headless: true
 ptt:
-  run: true
   forum:
-    - 'Gossiping'
+    - "Gossiping"
   n: 20
-  send: true
-  avatar: null
-  webhook:
-    - null
 plurk:
-  run: true
   query:
-    - 'plurk'
+    - "plurk"
   n: 60
-  send: true
-  avatar: null
-  webhook:
-    - null
 facebook:
-  run: true
   page:
-    - 'facebook'
+    - "facebook"
   n: 10
-  headless: true
   delay: 5
-  send: true
-  webhook:
-    - null
 dcard:
-  run: true
   forum:
-    - 'trending'
+    - "trending"
   n: 20
-  headless: true
   delay: 5
-  send: true
-  avatar: null
-  webhook:
-    - null
 cna:
-  run: true
   keywords:
-    - '社會'
+    - "社會"
   n: 99
-  send: true
-  avatar: null
-  webhook:
-    - null
-    
+webhook:
+  discord:
+    ptt: []
+    plurk: []
+    dcard: []
+    facebook: []
+    cna: []
