@@ -28,7 +28,7 @@ async def get_forum(forum: str, n: int = 30, **kwargs) -> list[str]:
             except aiohttp.web.HTTPException as E:
                 break
             if r('div.r-list-sep'):  # 移除置底文
-                posts.extend([f"{domain}{pq(s).find('div.title a').attr('href')}" for s in r('div.r-list-sep').prev_all('div.r-ent')][::-1])
+                posts.extend([f"{domain}{pq(s).attr('href')}" for s in r('div.r-list-sep').prev_all('div.r-ent').find('div.title a')][::-1])
             else:
                 posts.extend([f"{domain}{pq(s).attr('href')}" for s in r('div.r-ent div.title a')][::-1])
             if r('div.btn-group-paging a:nth-child(2)').attr('href'):  # 取得上一頁網址

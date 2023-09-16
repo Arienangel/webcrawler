@@ -32,7 +32,7 @@ async def get_forum(forum: str, n: int = 30, delay: float = 3, **kwargs) -> list
         driver.get(url)
         await asyncio.sleep(delay)
         try:
-            for _ in range(3):
+            for _ in range(10):
                 driver.find_element(By.CSS_SELECTOR, '#challenge-stage').click_safe()  # 移除登入視窗
                 await asyncio.sleep(delay)
             else:

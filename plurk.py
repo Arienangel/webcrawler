@@ -2,7 +2,7 @@ import logging
 
 import aiohttp
 import base36
-import dateutil
+import dateutil.parser
 
 logger = logging.getLogger('Plurk')
 

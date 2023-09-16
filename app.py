@@ -157,7 +157,7 @@ async def main():
         run_plurk(conf['plurk']['query']),
         run_dcard(conf['dcard']['forum']),
         run_facebook(conf['facebook']['page']),
-        run_cna(conf['cna']['keyword']),
+        run_cna(conf['cna']['keywords']),
     ]
     logger.info(f'Start webcrawling')
     res = await asyncio.gather(*jobs, return_exceptions=True)
