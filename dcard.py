@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import logging
 
 import dateutil
@@ -14,8 +15,10 @@ with open('config.yaml', encoding='utf-8') as f:
 options = uc.ChromeOptions()
 driver = uc.Chrome(options=options, version_main=conf['webdriver']['version'], headless=conf['webdriver']['headless'])
 
+logger.info(f'{__name__}: Start webdriver')
 
-async def get_forum(forum: str, n: int = 30, delay: float = 3, **kwargs) -> list:
+
+async def get_forum(forum: str, n: int = 30, delay: float = 3, retry: int = 10, **kwargs) -> list:
     """
     Get dcard posts in forum
 
@@ -31,25 +34,29 @@ async def get_forum(forum: str, n: int = 30, delay: float = 3, **kwargs) -> list
         url = f'https://www.dcard.tw/f/{forum}?tab=latest'
         driver.get(url)
         await asyncio.sleep(delay)
+        logger.info(f'Get Dcard forum: {forum}')
         try:
-            for _ in range(10):
+            for _ in range(retry):
                 driver.find_element(By.CSS_SELECTOR, '#challenge-stage').click_safe()  # 移除登入視窗
                 await asyncio.sleep(delay)
             else:
                 if driver.find_element(By.CSS_SELECTOR, '#challenge-stage'):
+                    logger.info('Dcard challenge failed')
                     return []
         except selenium.common.exceptions.NoSuchElementException:
             pass
         prevhigh = driver.execute_script("return document.body.scrollHeight;")
         while len(driver.find_elements(By.CSS_SELECTOR, 'a.atm_cs_1urozh')) < n:
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll to end
+            logger.info(f'Dcard forum scrolling: {forum}')
             await asyncio.sleep(delay)
-            high = driver.execute_script("return document.body.scrollHeight;")  # scroll to end
+            high = driver.execute_script("return document.body.scrollHeight;")
             if high == prevhigh: break
             else: prevhigh = driver.execute_script("return document.body.scrollHeight;")
         return [post.get_attribute('href') for post in driver.find_elements(By.CSS_SELECTOR, 'a.atm_cs_1urozh')][:n][::-1]
-    except selenium.common.exceptions.WebDriverException as E:
-        raise E
+    except Exception as E:
+        logger.warning(f'{__name__}@{inspect.stack()[0][3]}: {type(E).__name__}: {E}')
+        return []
 
 
 async def get_post(post_url: str, **kwargs) -> dict:
@@ -64,6 +71,7 @@ async def get_post(post_url: str, **kwargs) -> dict:
     """
     try:
         driver.get(post_url)
+        logger.info(f'Get Dcard post: {post_url}')
     except selenium.common.exceptions.WebDriverException as E:
         raise E
     forum = post_url.rsplit('/', 3)[1]

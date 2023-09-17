@@ -21,6 +21,7 @@ dcard:
     - "trending"
   n: 20
   delay: 5
+  retry: 3
 cna:
   keywords:
     - "社會"

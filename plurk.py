@@ -1,3 +1,4 @@
+import inspect
 import logging
 
 import aiohttp
@@ -24,6 +25,7 @@ async def get_search(query: str, n: int = 30, **kwargs) -> list[dict]:
         while len(posts) < n:
             try:
                 async with session.post(search_url, data=post_body) as response:
+                    logger.info(f'Get Plurk search: {query}')
                     body = await response.json()
                     users = body['users']
                     for post in body['plurks']:
@@ -35,5 +37,6 @@ async def get_search(query: str, n: int = 30, **kwargs) -> list[dict]:
                         posts.append({'author': author, 'time': time, 'content': content, 'id': id, 'post_url': url})
                     post_body.update({'after_id': posts[-1]['id']})
             except aiohttp.web.HTTPException as E:
-                pass
+                logger.warning(f'{__name__}@{inspect.stack()[0][3]}: {type(E).__name__}: {E}')
+                break
     return posts[:n][::-1]

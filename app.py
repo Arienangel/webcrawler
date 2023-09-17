@@ -11,7 +11,7 @@ with open('config.yaml', encoding='utf-8') as f:
 if not os.path.exists('data'): os.makedirs('data')
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=conf['app']['logging_level'])
-logger = logging.getLogger(f'App')
+logger = logging.getLogger('App')
 
 
 async def run_ptt(forums: list):
@@ -71,7 +71,7 @@ async def run_dcard(forums: list):
     for forum in forums:
         logger.info(f'Start Dcard crawling: {forum}')
         try:
-            posts = await dcard.get_forum(forum, n=conf['dcard']['n'], delay=conf['dcard']['delay'])
+            posts = await dcard.get_forum(forum, n=conf['dcard']['n'], delay=conf['dcard']['delay'], retry=conf['dcard']['retry'])
         except Exception as E:
             logger.error(f'@{inspect.stack()[0][3]}: {type(E).__name__}: {E}')
             continue

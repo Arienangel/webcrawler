@@ -1,3 +1,4 @@
+import inspect
 import logging
 import math
 import re
@@ -6,7 +7,7 @@ import aiohttp
 import dateutil
 from pyquery import PyQuery as pq
 
-logger = logging.getLogger('PTT')
+logger = logging.getLogger('CNA')
 
 
 async def get_news(keywords: list[str] = None, n: int = 100, **kwargs) -> tuple[str]:
@@ -27,6 +28,7 @@ async def get_news(keywords: list[str] = None, n: int = 100, **kwargs) -> tuple[
             try:
                 post_body = {"action": "0", "category": "aall", "pagesize": "20", "pageidx": x + 1}
                 async with session.post(url, data=post_body) as response:
+                    logger.info(f'Get CNA news')
                     body = await response.json()
                     for i in body['ResultData']['Items']:
                         if keywords:
@@ -36,7 +38,8 @@ async def get_news(keywords: list[str] = None, n: int = 100, **kwargs) -> tuple[
                         else:
                             posts.append(i['PageUrl'])
             except aiohttp.web.HTTPException as E:
-                pass
+                logger.warning(f'{__name__}@{inspect.stack()[0][3]}: {type(E).__name__}: {E}')
+                return []
     return posts[:n][::-1]
 
 
@@ -53,6 +56,7 @@ async def get_post(post_url: str, **kwargs) -> dict:
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(post_url) as response:
+                logger.info(f'Get CNA post: {post_url}')
                 body = await response.text()
                 r = pq(body)
     except aiohttp.web.HTTPException as E:

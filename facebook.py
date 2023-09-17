@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import logging
 
 import selenium.common.exceptions
@@ -29,23 +30,31 @@ async def get_page(page: str, n: int = 30, delay: float = 3, **kwargs) -> list:
     try:
         url = f'https://www.facebook.com/{page}'
         driver.get(url)
+        logger.info(f'Get Facebook page: {page}')
         await asyncio.sleep(delay)
         try:
             driver.find_element(By.CSS_SELECTOR, 'div[role="dialog"]>div>div>i.x1b0d499').click_safe()  # 移除登入視窗
         except selenium.common.exceptions.NoSuchElementException:
             pass
         prevhigh = driver.execute_script("return document.body.scrollHeight;")
-        while len(driver.find_elements(By.CSS_SELECTOR, 'div.xh8yej3>* a.x1heor9g.xt0b8zv.xo1l8bm')) < n:
-            if driver.current_url.split('?', 1)[0] == 'https://www.facebook.com/login/':
-                return []
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            await asyncio.sleep(delay)
-            high = driver.execute_script("return document.body.scrollHeight;")  # scroll to end
-            if high == prevhigh: break
-            else: prevhigh = driver.execute_script("return document.body.scrollHeight;")
-        return [post.get_attribute('href').split('?')[0] for post in driver.find_elements(By.CSS_SELECTOR, 'div.xh8yej3>* a.x1heor9g.xt0b8zv.xo1l8bm')][:n][::-1]
-    except selenium.common.exceptions.WebDriverException as E:
-        raise E
+        try:
+            while len(driver.find_elements(By.CSS_SELECTOR, 'div.xh8yej3>* a.x1heor9g.xt0b8zv.xo1l8bm')) < n:
+                if driver.current_url.split('?', 1)[0] == 'https://www.facebook.com/login/':
+                    logger.info(f'Facebook page require login: {page}')
+                    return []
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll to end
+                logger.info(f'Facebook page scrolling: {page}')
+                await asyncio.sleep(delay)
+                high = driver.execute_script("return document.body.scrollHeight;")
+                if high == prevhigh: break
+                else: prevhigh = driver.execute_script("return document.body.scrollHeight;")
+            return [post.get_attribute('href').split('?')[0] for post in driver.find_elements(By.CSS_SELECTOR, 'div.xh8yej3>* a.x1heor9g.xt0b8zv.xo1l8bm')][:n][::-1]
+        except selenium.common.exceptions.NoSuchElementException:
+            return []
+    except Exception as E:
+            logger.warning(f'{__name__}@{inspect.stack()[0][3]}: {type(E).__name__}: {E}')
+            return []
+
 
 
 async def get_post(post_url: str, **kwargs) -> dict:
@@ -60,10 +69,12 @@ async def get_post(post_url: str, **kwargs) -> dict:
     """
     try:
         driver.get(post_url)
+        logger.info(f'Get Facebook post: {post_url}')
         driver.find_element(By.CSS_SELECTOR, 'div[role="dialog"]>div>div>i.x1b0d499').click_safe()  # 移除登入視窗
     except selenium.common.exceptions.NoSuchElementException:
         pass
     if driver.current_url.split('?', 1)[0] == 'https://www.facebook.com/login/':
+        logger.info(f'Facebook post require login: {post_url}')
         raise selenium.common.exceptions.WebDriverException
     base, _, id, _ = driver.find_element(By.CSS_SELECTOR, 'link[rel="canonical"]').get_attribute('href').rsplit('/', 3)
     url = f'{base}/{id}'
