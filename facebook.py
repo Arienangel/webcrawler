@@ -12,8 +12,11 @@ with open('config.yaml', encoding='utf-8') as f:
     conf = yaml.load(f, yaml.SafeLoader)
 
 options = uc.ChromeOptions()
+options.add_argument('--disable-gpu')
+options.add_argument(f'--user-agent={conf["webdriver"]["user_agent"]}')
 driver = uc.Chrome(options=options, version_main=conf['webdriver']['version'], headless=conf['webdriver']['headless'])
 
+logger.info(f'{__name__}: Start webdriver')
 
 async def get_page(page: str, n: int = 30, delay: float = 3, **kwargs) -> list:
     """
@@ -79,7 +82,7 @@ async def get_post(post_url: str, **kwargs) -> dict:
     base, _, id, _ = driver.find_element(By.CSS_SELECTOR, 'link[rel="canonical"]').get_attribute('href').rsplit('/', 3)
     url = f'{base}/{id}'
     encrypt_url = driver.find_element(By.CSS_SELECTOR, 'span.x1qrby5j>a').get_attribute('href')
-    page = driver.find_element(By.CSS_SELECTOR, 'a.x1i10hfl>strong>span').text
+    page = driver.find_element(By.CSS_SELECTOR, 'a.x1s688f').text
     time = int(driver.find_element(By.CSS_SELECTOR, 'div.x6s0dn4.x78zum5>form>input[name="lgnjs"]').get_attribute('value'))
     content = driver.find_element(By.CSS_SELECTOR, 'span.xzsf02u.x1yc453h').text
     return {'page': page, 'time': time, 'content': content, 'post_url': url, 'encrypt_url': encrypt_url}

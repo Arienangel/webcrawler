@@ -13,6 +13,8 @@ with open('config.yaml', encoding='utf-8') as f:
     conf = yaml.load(f, yaml.SafeLoader)
 
 options = uc.ChromeOptions()
+options.add_argument('--disable-gpu')
+options.add_argument(f'--user-agent={conf["webdriver"]["user_agent"]}') # https://github.com/ultrafunkamsterdam/undetected-chromedriver/issues/1577#issuecomment-1741737531
 driver = uc.Chrome(options=options, version_main=conf['webdriver']['version'], headless=conf['webdriver']['headless'])
 
 logger.info(f'{__name__}: Start webdriver')
@@ -37,7 +39,7 @@ async def get_forum(forum: str, n: int = 30, delay: float = 3, retry: int = 10, 
         logger.info(f'Get Dcard forum: {forum}')
         try:
             for _ in range(retry):
-                driver.find_element(By.CSS_SELECTOR, '#challenge-stage').click_safe()  # 移除登入視窗
+                driver.find_element(By.CSS_SELECTOR, '#challenge-stage').click_safe() 
                 await asyncio.sleep(delay)
             else:
                 if driver.find_element(By.CSS_SELECTOR, '#challenge-stage'):
