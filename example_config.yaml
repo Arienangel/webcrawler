@@ -8,10 +8,12 @@ ptt:
   forum:
     - "Gossiping"
   n: 20
+  delay: 3
 plurk:
   query:
     - "plurk"
   n: 60
+  delay: 3
 facebook:
   page:
     - "facebook"
@@ -20,6 +22,8 @@ facebook:
 dcard:
   forum:
     - "trending"
+  topic: 
+   - "性別"
   n: 20
   delay: 5
   retry: 3
@@ -28,6 +32,7 @@ cna:
     - "社會"
   n: 99
 webhook:
+  max_length: 2000
   discord:
     ptt: []
     plurk: []

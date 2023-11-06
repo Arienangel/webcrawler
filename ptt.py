@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import logging
 
@@ -20,15 +21,15 @@ async def get_forum(forum: str, n: int = 30, **kwargs) -> list[str]:
     domain = 'https://www.ptt.cc'
     forum_url = f'{domain}/bbs/{forum}/index.html'
     posts = list()
+    logger.info(f'Get PTT forum: {forum}')
     async with aiohttp.ClientSession(headers={"Cookie": "over18=1"}) as session:
         while len(posts) < n:
             try:
                 async with session.get(forum_url) as response:
-                    logger.info(f'Get PTT forum: {forum}')
                     body = await response.text()
                     r = pq(body)
             except aiohttp.web.HTTPException as E:
-                logger.warning(f'{__name__}@{inspect.stack()[0][3]}: {type(E).__name__}: {E}')
+                logger.warning(f'{__name__}@{inspect.stack()[0][3]}(forum={forum}): {type(E).__name__}: {E}')
                 break
             if r('div.r-list-sep'):  # 移除置底文
                 posts.extend([f"{domain}{pq(s).attr('href')}" for s in r('div.r-list-sep').prev_all('div.r-ent').find('div.title a')][::-1])

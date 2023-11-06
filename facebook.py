@@ -43,19 +43,18 @@ async def get_page(page: str, n: int = 30, delay: float = 3, **kwargs) -> list:
         try:
             while len(driver.find_elements(By.CSS_SELECTOR, 'div.xh8yej3>* a.x1heor9g.xt0b8zv.xo1l8bm')) < n:
                 if driver.current_url.split('?', 1)[0] == 'https://www.facebook.com/login/':
-                    logger.info(f'Facebook page require login: {page}')
-                    return []
+                    raise Exception(f'Facebook page require login: {page}')
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll to end
-                logger.info(f'Facebook page scrolling: {page}')
+                logger.debug(f'Facebook page scrolling: {page}')
                 await asyncio.sleep(delay)
                 high = driver.execute_script("return document.body.scrollHeight;")
                 if high == prevhigh: break
                 else: prevhigh = driver.execute_script("return document.body.scrollHeight;")
-            return [post.get_attribute('href').split('?')[0] for post in driver.find_elements(By.CSS_SELECTOR, 'div.xh8yej3>* a.x1heor9g.xt0b8zv.xo1l8bm')][:n][::-1]
+            return [post.get_attribute('href').split('?')[0] for post in driver.find_elements(By.CSS_SELECTOR, 'div.xz9dl7a > * span.x1qrby5j > a.x1heor9g.xt0b8zv.xo1l8bm')][:n][::-1]
         except selenium.common.exceptions.NoSuchElementException:
             return []
     except Exception as E:
-            logger.warning(f'{__name__}@{inspect.stack()[0][3]}: {type(E).__name__}: {E}')
+            logger.warning(f'{__name__}@{inspect.stack()[0][3]}(page={page}): {type(E).__name__}: {E}'.split('\n')[0])
             return []
 
 
@@ -77,11 +76,12 @@ async def get_post(post_url: str, **kwargs) -> dict:
     except selenium.common.exceptions.NoSuchElementException:
         pass
     if driver.current_url.split('?', 1)[0] == 'https://www.facebook.com/login/':
-        logger.info(f'Facebook post require login: {post_url}')
-        raise selenium.common.exceptions.WebDriverException
+        raise Exception(f'Facebook post require login: {post_url}')
+    if '/events/' in driver.current_url or '/videos/' in driver.current_url or '/reel/' in driver.current_url:
+        raise NotImplementedError
     base, _, id, _ = driver.find_element(By.CSS_SELECTOR, 'link[rel="canonical"]').get_attribute('href').rsplit('/', 3)
     url = f'{base}/{id}'
-    encrypt_url = driver.find_element(By.CSS_SELECTOR, 'span.x1qrby5j>a').get_attribute('href')
+    encrypt_url = driver.find_element(By.CSS_SELECTOR, 'span.x1qrby5j>a').get_attribute('href').split('?')[0]
     page = driver.find_element(By.CSS_SELECTOR, 'a.x1s688f').text
     time = int(driver.find_element(By.CSS_SELECTOR, 'div.x6s0dn4.x78zum5>form>input[name="lgnjs"]').get_attribute('value'))
     content = driver.find_element(By.CSS_SELECTOR, 'span.xzsf02u.x1yc453h').text

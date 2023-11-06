@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import logging
 
@@ -21,11 +22,13 @@ async def get_search(query: str, n: int = 30, **kwargs) -> list[dict]:
     search_url = 'https://www.plurk.com/Search/search2'
     post_body = {"query": query}
     posts = list()
+    logger.info(f'Get Plurk search: {query}')
     async with aiohttp.ClientSession() as session:
         while len(posts) < n:
             try:
                 async with session.post(search_url, data=post_body) as response:
-                    logger.info(f'Get Plurk search: {query}')
+                    if response.content_type != 'application/json':
+                        break
                     body = await response.json()
                     users = body['users']
                     for post in body['plurks']:
@@ -37,6 +40,6 @@ async def get_search(query: str, n: int = 30, **kwargs) -> list[dict]:
                         posts.append({'author': author, 'time': time, 'content': content, 'id': id, 'post_url': url})
                     post_body.update({'after_id': posts[-1]['id']})
             except aiohttp.web.HTTPException as E:
-                logger.warning(f'{__name__}@{inspect.stack()[0][3]}: {type(E).__name__}: {E}')
+                logger.warning(f'{__name__}@{inspect.stack()[0][3]}(query={query}): {type(E).__name__}: {E}')
                 break
     return posts[:n][::-1]

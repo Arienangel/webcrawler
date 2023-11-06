@@ -38,7 +38,7 @@ async def get_news(keywords: list[str] = None, n: int = 100, **kwargs) -> tuple[
                         else:
                             posts.append(i['PageUrl'])
             except aiohttp.web.HTTPException as E:
-                logger.warning(f'{__name__}@{inspect.stack()[0][3]}: {type(E).__name__}: {E}')
+                logger.warning(f'{__name__}@{inspect.stack()[0][3]}(keywords={keywords}): {type(E).__name__}: {E}')
                 return []
     return posts[:n][::-1]
 
