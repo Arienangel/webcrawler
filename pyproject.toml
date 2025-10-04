@@ -1,0 +1,24 @@
+[project]
+name = "webcrawler"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "base36>=0.1.1",
+    "beautifulsoup4>=4.14.2",
+    "pyyaml>=6.0.3",
+    "requests>=2.32.5",
+    "selenium>=4.36.0",
+]
+
+[tool.uv]
+override-dependencies = [
+    "pywin32; sys_platform == 'never'",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.30.1",
+    "pandas>=2.3.3",
+]
