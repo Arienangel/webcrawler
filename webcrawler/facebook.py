@@ -28,6 +28,7 @@ class Page:
 
         def load_page():
             browser.get(self.url)
+            time.sleep(3)
             while not stop:
                 browser.cdp.send('Runtime.evaluate', expression='''document.querySelector('div[role="dialog"] i.x1b0d499.x1d69dk1').click()''')
                 browser.scroll(
@@ -119,13 +120,12 @@ class Post:
     def url(self):
         return f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.id if self.id else self.pfbid}'
 
-    def get_comments(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10):
+    def get_post(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10):
 
         def load_page():
             nonlocal stop
             browser.get(self.url)
             time.sleep(3)
-            scrollY = 0
             while not stop:
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
@@ -136,12 +136,6 @@ class Post:
                     count=1,
                     repeat_delay=0.5 + random.random(),
                 )
-                new_scrollY = int(browser.cdp.get_received_by_id(browser.cdp.send('Runtime.evaluate', expression='window.scrollY;'))['result']['result']['value'])
-                if scrollY == new_scrollY:
-                    stop = True
-                    return
-                else:
-                    scrollY = new_scrollY
 
         def read_received():
             nonlocal start_idx
@@ -160,7 +154,8 @@ class Post:
                                 self.page.name = post['comet_sections']['content']['story']['actors'][0]['name']
                             self.id = int(post['comet_sections']['content']['story']['post_id'])
                             self.pfbid = post['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1]
-                            if post['comet_sections']['content']['story']['message']: self.text = post['comet_sections']['content']['story']['message']['text']
+                            if post['comet_sections']['content']['story']['message']:
+                                self.text = post['comet_sections']['content']['story']['message']['text']
                             if post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']:
                                 self.title = post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text']
                             self.creation_time = datetime.datetime.fromtimestamp(post['comet_sections']['timestamp']['story']['creation_time'])
@@ -194,6 +189,7 @@ class Post:
                                     'feedback']['comment_rendering_instance_for_feed_location']['comments']['edges']:
                                 comment = Comment(self.page, self, c['node']['legacy_fbid'])
                                 comment.text = c['node']['body']['text']
+                                comment.creation_time = datetime.datetime.fromtimestamp(c['node']['created_time'])
                                 comment.reaction_count = c['node']['feedback']['reactors']['count_reduced']
                                 if self.page.id == c['node']['author']['id']:
                                     comment.author = self.page

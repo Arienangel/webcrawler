@@ -1,12 +1,20 @@
-import copy
 import datetime
 import json
 import queue
 import threading
 import time
+
+import base36
 import dateutil
 import requests
-import base36
+
+
+def convert_to_id(b36: str):
+    return base36.loads(b36)
+
+
+def convert_to_b36(id: int):
+    return base36.dumps(int(id))
 
 
 class Search:
@@ -28,16 +36,15 @@ class Search:
     def get_posts(self, session: requests.Session, min_count: int = 30, time_until: datetime.datetime = None, timeout: float = 10):
 
         def load_page():
-            api_body = copy.copy(self.api_body)
             while not stop:
-                response = session.post(self.api_url, api_body, timeout=timeout)
+                response = session.post(self.api_url, self.api_body, timeout=timeout)
                 if response.headers['Content-Type'] != 'application/json':
                     time.sleep(2)
                     continue
                 response_queue.put(response.json())
                 time.sleep(2)
                 try:
-                    api_body.update({'after_id': next_id.get(timeout=timeout)})
+                    self.api_body.update({'after_id': next_id.get(timeout=timeout)})
                 except queue.ShutDown:
                     return
 
@@ -115,7 +122,10 @@ class Search:
                         post.responded = p['responded']
                         post.favorite = p['favorite']
                         self.posts.append(post)
-                    next_id.put(self.posts[-1].id)
+                    try:
+                        next_id.put(self.posts[-1].id)
+                    except queue.ShutDown:
+                        return
 
         stop = False
         end_time = time.time() + timeout
@@ -145,10 +155,11 @@ class Search:
 
 class Post:
 
-    def __init__(self, id: int):
-        self.id: int = id
+    def __init__(self, id: int = None, b36: str = None):
+        if id: self.id: int = id
+        else: self.id: int = convert_to_id(b36)
         self.api_url: str = 'https://www.plurk.com/Responses/get'
-        self.api_body: dict = {"plurk_id": id, "from_response_id": 0}
+        self.api_body: dict = {"plurk_id": self.id, "from_response_id": 0}
         self.comments: list[Comment] = []
         self.users: dict[int, User] = {}
 
@@ -157,7 +168,7 @@ class Post:
 
     @property
     def b36(self):
-        return self.convert_to_b36(self.id)
+        return convert_to_b36(self.id)
 
     @property
     def url(self):
@@ -166,16 +177,15 @@ class Post:
     def get_comments(self, session: requests.Session, min_count: int = 30, timeout: float = 10):
 
         def load_page():
-            api_body = copy.copy(self.api_body)
             while not stop:
-                response = session.post(self.api_url, api_body, timeout=timeout)
+                response = session.post(self.api_url, self.api_body, timeout=timeout)
                 if response.headers['Content-Type'] != 'application/json':
                     time.sleep(2)
                     continue
                 response_queue.put(response.json())
                 time.sleep(2)
                 try:
-                    api_body.update({'from_response_id': next_id.get(timeout=timeout)})
+                    self.api_body.update({'from_response_id': next_id.get(timeout=timeout)})
                 except queue.ShutDown:
                     return
 
@@ -232,7 +242,10 @@ class Post:
                         comment.editability = c['editability']
                         self.comments.append(comment)
                         floor += 1
-                    next_id.put(self.comments[-1].id)
+                    try:
+                        next_id.put(self.comments[-1].id)
+                    except queue.ShutDown:
+                        return
 
         stop = False
         end_time = time.time() + timeout
@@ -251,14 +264,6 @@ class Post:
         finally:
             stop = True
             next_id.shutdown(immediate=True)
-
-    @staticmethod
-    def convert_to_id(b36: str):
-        return base36.loads(b36)
-
-    @staticmethod
-    def convert_to_b36(id: int):
-        return base36.dumps(int(id))
 
     def export(self, attributes: list[str], comment_attributes: list[str]):
         data = {a: getattr(self, a, None) for a in attributes}

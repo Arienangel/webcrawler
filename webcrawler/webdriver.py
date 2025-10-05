@@ -99,8 +99,8 @@ class ChromeProcess:
             self.cdp.send('Network.enable')
         atexit.register(self.stop)
 
-    def get(self, url: str):
-        self.cdp.send('Page.navigate', url=url)
+    def get(self, url: str, **params):
+        self.cdp.send('Page.navigate', url=url, **params)
 
     def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25):
         self.cdp.send('Input.synthesizeScrollGesture', x=x, y=y, xDistance=x_distance, yDistance=y_distance, speed=speed, repeatCount=count - 1, repeatDelayMs=int(repeat_delay * 1000))
