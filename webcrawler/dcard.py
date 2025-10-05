@@ -13,13 +13,16 @@ class Forum:
 
     def __init__(self, alias: str):
         self.alias: str = alias
-        self.url: str = f'https://www.dcard.tw/f/{alias}?tab=latest'
         self.posts: list[Post] = []
 
     def __repr__(self):
         return f'<Dcard forum: {self.alias}>'
 
-    def get_posts(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: int = 30):
+    @property
+    def url(self):
+        return f'https://www.dcard.tw/f/{self.alias}?tab=latest'
+
+    def get_posts(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30):
 
         def load_page():
             browser.get(self.url)
@@ -100,8 +103,8 @@ class Forum:
         try:
             while time.time() < end_time:
                 if all([
-                        True if min_count is None else True if len(self.posts) > min_count else False,
-                        True if time_until is None else True if self.posts[-1].created_at < time_until else False,
+                        True if min_count is None else True if len(self.posts) >= min_count else False,
+                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_at <= time_until else False,
                 ]):
                     return
                 if stop:
@@ -109,19 +112,28 @@ class Forum:
         finally:
             stop = True
 
+    def export(self, attributes: list[str], post_attributes: list[str]):
+        data = {a: getattr(self, a, None) for a in attributes}
+        if 'posts' in attributes:
+            data.update({'posts': {post.id: {a: getattr(post, a, None) for a in post_attributes} for post in self.posts}})
+        return json.dumps(data, ensure_ascii=False)
+
 
 class Post:
 
     def __init__(self, forum: Forum, id: int):
         self.forum: Forum = forum
         self.id: int = id
-        self.url: str = f'https://www.dcard.tw/f/{self.forum.alias}/p/{self.id}'
         self.comments: list[Comment] = []
 
     def __repr__(self):
         return f'<Dcard post: {self.forum.alias}:{self.id}>'
 
-    def get_post(self, browser: ChromeProcess, min_count: int = 30, timeout: int = 30):
+    @property
+    def url(self):
+        return f'https://www.dcard.tw/f/{self.forum.alias}/p/{self.id}'
+
+    def get_post(self, browser: ChromeProcess, min_count: int = 30, timeout: float = 30):
 
         def load_page():
             nonlocal stop
@@ -266,7 +278,7 @@ class Post:
         try:
             while time.time() < end_time:
                 if all([
-                        True if min_count is None else True if len(self.comments) > min_count else False,
+                        True if min_count is None else True if len(self.comments) >= min_count else False,
                 ]):
                     return
                 if stop:
@@ -279,6 +291,12 @@ class Post:
         while time.time() < end_time:
             if length == len(browser.cdp.received): break
             else: length = len(browser.cdp.received)
+
+    def export(self, attributes: list[str], comment_attributes: list[str]):
+        data = {a: getattr(self, a, None) for a in attributes}
+        if 'comments' in attributes:
+            data.update({'comments': {comment.id: {a: getattr(comment, a, None) for a in comment_attributes} for comment in self.comments}})
+        return json.dumps(data, ensure_ascii=False)
 
 
 class Comment:
