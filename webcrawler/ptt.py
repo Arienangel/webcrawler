@@ -1,6 +1,7 @@
 import json
 import re
 import time
+
 import dateutil
 import requests
 from bs4 import BeautifulSoup
@@ -77,7 +78,9 @@ class Post:
         self.time = dateutil.parser.parse(header[2].select('span.article-meta-value')[0].text)
         text = response.select('div#main-content')[0].text
         self.content = text.split('\n', maxsplit=1)[1].split('\n\n--\n※ 發信站: 批踢踢實業坊(ptt.cc)', maxsplit=1)[0]
-        self.ip, self.country = re.search(r'※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自: (.+) \((.+)\)\s※ 文章網址', text).groups()
+        location=re.search(r'※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自: (.+) \((.+)\)\s※ 文章網址', text)
+        if location:
+            self.ip, self.country = location.groups()
         year, month = self.time.year, self.time.month
         for floor, c in enumerate(response.select('div#main-content > div.push'), 1):
             comment = Comment(self.forum, self, floor)

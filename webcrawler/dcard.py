@@ -4,6 +4,7 @@ import random
 import threading
 import time
 
+from bs4 import BeautifulSoup
 import dateutil
 
 from .webdriver import ChromeProcess
@@ -25,7 +26,8 @@ class Forum:
     def get_posts(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30):
 
         def load_page():
-            browser.get(self.url)
+            browser.get(self.url, referrer='https://www.google.com/')
+            time.sleep(3)
             while not stop:
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
@@ -137,9 +139,8 @@ class Post:
 
         def load_page():
             nonlocal stop
-            browser.get(self.url)
-            time.sleep(1)
-            scrollY = 0
+            browser.get(self.url, referrer='https://www.google.com/')
+            time.sleep(3)
             while not stop:
                 browser.cdp.send('Runtime.evaluate', expression="document.querySelector('div#comment-list-section button:nth-last-child(2)').click()")
                 browser.scroll(
@@ -151,12 +152,6 @@ class Post:
                     count=1,
                     repeat_delay=0.5 + random.random(),
                 )
-                new_scrollY = int(browser.cdp.get_received_by_id(browser.cdp.send('Runtime.evaluate', expression='window.scrollY;'))['result']['result']['value'])
-                if scrollY == new_scrollY:
-                    stop = True
-                    return
-                else:
-                    scrollY = new_scrollY
 
         def read_received():
             nonlocal start_idx
@@ -164,42 +159,58 @@ class Post:
                 for r in browser.cdp.received[start_idx:]:
                     start_idx += 1
                     if r['method'] == 'Network.responseReceived':
-                        if f'https://www.dcard.tw/service/api/v2/posts/{self.id}?withPreview=true' in r['params']['response']['url']:
+                        if self.url in r['params']['response']['url']:
+                            time.sleep(0.5)
+                            response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'],
+                                                     features="html.parser")
+                            response = json.loads(response.find('script', type="application/ld+json").text)
+                            self.title = response['headline']
+                            self.content = response['text']
+                            self.created_at = dateutil.parser.parse(response['datePublished'])
+                            self.updated_at = dateutil.parser.parse(response['dateModified'])
+                            self.persona_nickname = response['author']['name']
+                            self.persona_uid = response['author']['identifier']
+                            self.gender = response['author']['gender']
+                            self.like_count = response['interactionStatistic'][0]['userInteractionCount']
+                            self.comment_count = response['interactionStatistic'][1]['userInteractionCount']
+                            self.share_count = response['interactionStatistic'][2]['userInteractionCount']
+                        elif f'https://www.dcard.tw/service/api/v2/posts/{self.id}?withPreview=true' in r['params']['response']['url']:
                             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                             self.title = response['title']
                             self.excerpt = response['excerpt']
-                            self.anonymous_school = response['anonymousSchool']
-                            self.anonymous_department = response['anonymousDepartment']
-                            self.pinned = response['pinned']
-                            self.reply_id = response['replyId']
+                            self.content = response['content']
                             self.created_at = dateutil.parser.parse(response['createdAt'])
                             self.updated_at = dateutil.parser.parse(response['updatedAt'])
-                            self.comment_count = response['commentCount']
+                            self.anonymous_school = response['anonymousSchool']
+                            self.anonymous_department = response['anonymousDepartment']
+                            if 'school' in response: self.school = response['school']
+                            if 'department' in response: self.department = response['department']
+                            self.with_nickname = response['withNickname']
+                            self.persona_nickname = response['personaNickname']
+                            self.persona_uid = response['personaUid']
+                            self.gender = response['gender']
+                            self.is_suspicious_account = response['isSuspiciousAccount']
+                            self.is_moderator = response['isModerator']
                             self.like_count = response['likeCount']
+                            self.reactions = response['reactions']
+                            self.comment_count = response['commentCount']
+                            self.total_comment_count = response['totalCommentCount']
+                            self.share_count = response['shareCount']
                             self.collection_count = response['collectionCount']
-                            self.share_countt = response['shareCount']
+                            self.pinned = response['pinned']
+                            self.reply_id = response['replyId']
                             self.tags = response['tags']
                             self.topics = response['topics']
-                            self.with_nickname = response['withNickname']
                             self.report_reason = response['reportReason']
                             self.hidden_by_author = response['hiddenByAuthor']
                             self.pinned_in_profile_wall = response['pinnedInProfileWall']
                             self.hidden_in_profile_wall = response['hiddenInProfileWall']
                             self.nsfw = response['nsfw']
-                            if 'school' in response: self.school = response['school']
-                            if 'department' in response: self.department = response['department']
                             self.reply_title = response['replyTitle']
                             self.persona_subscriptable = response['personaSubscriptable']
-                            self.gender = response['gender']
                             self.identity_type = response['identityType']
-                            self.persona_nickname = response['personaNickname']
-                            self.persona_uid = response['personaUid']
                             self.quote_count = response['quoteCount']
-                            self.content = response['content']
-                            self.reactions = response['reactions']
                             self.hidden = response['hidden']
-                            self.is_suspicious_account = response['isSuspiciousAccount']
-                            self.is_moderator = response['isModerator']
                             self.layout = response['layout']
                             self.spoiler_alert = response['spoilerAlert']
                             self.with_images = response['withImages']
@@ -209,7 +220,6 @@ class Post:
                             self.is_selected_post = response['isSelectedPost']
                             self.unsafe = response['unsafe']
                             self.enable_nested_comment = response['enableNestedComment']
-                            self.total_comment_count = response['totalCommentCount']
                             self.media_meta = response['mediaMeta']
                             self.edited = response['edited']
                             self.links = response['links']
@@ -228,46 +238,46 @@ class Post:
                             if 'officialCreatorBadge' in response: self.official_creatorBadge = response['officialCreatorBadge']
                         elif f'https://www.dcard.tw/service/api/v3/posts/{self.id}/comments?sort=oldest' in r['params']['response']['url']:
                             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
-                            for item in response['items']:
-                                comment = Comment(self.forum, self, item['floor'])
-                                comment.id = item['id']
-                                comment.anonymous = item['anonymous']
-                                comment.created_at = dateutil.parser.parse(item['createdAt'])
-                                comment.updated_at = dateutil.parser.parse(item['updatedAt'])
-                                comment.content = item['content']
-                                comment.like_count = item['likeCount']
-                                comment.with_nickname = item['withNickname']
-                                comment.hidden_by_author = item['hiddenByAuthor']
-                                comment.pinned = item['pinned']
-                                comment.host = item['host']
-                                comment.gender = item['gender']
-                                if 'department' in item: comment.school = item['school']
-                                if 'department' in item: comment.department = item['department']
-                                comment.persona_nickname = item['personaNickname']
-                                comment.persona_uid = item['personaUid']
-                                comment.report_reason = item['reportReason']
-                                comment.is_blocked = item['isBlocked']
-                                comment.is_blocker = item['isBlocker']
-                                comment.media_meta = item['mediaMeta']
-                                comment.current_member = item['currentMember']
-                                comment.hidden = item['hidden']
-                                comment.in_review = item['inReview']
-                                comment.links = item['links']
-                                comment.report_reason_text = item['reportReasonText']
-                                comment.is_suspicious_account = item['isSuspiciousAccount']
-                                comment.is_moderator = item['isModerator']
-                                comment.doorplate = item['doorplate']
-                                comment.subcomment_count = item['subCommentCount']
-                                comment.with_badge = item['withBadge']
-                                comment.is_throttled = item['isThrottled']
-                                comment.identity_idV3 = item['identityIdV3']
-                                comment.edited = item['edited']
-                                comment.post_avatar = item['postAvatar']
-                                comment.activity_avatar = item['activityAvatar']
-                                comment.verified_badge = item['verifiedBadge']
-                                comment.member_type = item['memberType']
-                                if 'creatorBadge' in item: comment.creator_badge = item['creatorBadge']
-                                if 'officialCreatorBadge' in item: comment.official_creator_badge = item['officialCreatorBadge']
+                            for c in response['items']:
+                                comment = Comment(self.forum, self, c['floor'])
+                                comment.id = c['id']
+                                if 'content' in c: comment.content = c['content']
+                                comment.created_at = dateutil.parser.parse(c['createdAt'])
+                                comment.updated_at = dateutil.parser.parse(c['updatedAt'])
+                                if 'anonymous' in c: comment.anonymous = c['anonymous']
+                                if 'school' in c: comment.school = c['school']
+                                if 'department' in c: comment.department = c['department']
+                                comment.with_nickname = c['withNickname']
+                                if 'persona_nickname' in c: comment.persona_nickname = c['personaNickname']
+                                if 'persona_uid' in c: comment.persona_uid = c['personaUid']
+                                if 'gender' in c: comment.gender = c['gender']
+                                comment.is_suspicious_account = c['isSuspiciousAccount']
+                                comment.is_moderator = c['isModerator']
+                                if 'likeCount' in c: comment.like_count = c['likeCount']
+                                if 'subCommentCount' in c: comment.subcomment_count = c['subCommentCount']
+                                comment.hidden_by_author = c['hiddenByAuthor']
+                                comment.pinned = c['pinned']
+                                comment.host = c['host']
+                                comment.report_reason = c['reportReason']
+                                comment.is_blocked = c['isBlocked']
+                                comment.is_blocker = c['isBlocker']
+                                comment.media_meta = c['mediaMeta']
+                                comment.current_member = c['currentMember']
+                                comment.hidden = c['hidden']
+                                comment.in_review = c['inReview']
+                                comment.links = c['links']
+                                comment.report_reason_text = c['reportReasonText']
+                                comment.doorplate = c['doorplate']
+                                comment.with_badge = c['withBadge']
+                                comment.is_throttled = c['isThrottled']
+                                if 'identityIdV3' in c: comment.identity_idV3 = c['identityIdV3']
+                                comment.edited = c['edited']
+                                comment.post_avatar = c['postAvatar']
+                                comment.activity_avatar = c['activityAvatar']
+                                comment.verified_badge = c['verifiedBadge']
+                                comment.member_type = c['memberType']
+                                if 'creatorBadge' in c: comment.creator_badge = c['creatorBadge']
+                                if 'officialCreatorBadge' in c: comment.official_creator_badge = c['officialCreatorBadge']
                                 self.comments.append(comment)
 
         stop = False
