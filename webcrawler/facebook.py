@@ -15,13 +15,16 @@ class Page:
     def __init__(self, id: int = None, alias: str = None):
         self.id: int = id if id else None
         self.alias: str = alias if alias else None
-        self.url: str = f'https://www.facebook.com/{self.id if self.id else self.alias}'
         self.posts: list[Post] = []
 
     def __repr__(self):
         return f'<Facebook page: {self.alias if self.alias else self.id}>'
 
-    def get_posts(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: int = 30):
+    @property
+    def url(self):
+        return f'https://www.facebook.com/{self.id if self.id else self.alias}'
+
+    def get_posts(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30):
 
         def load_page():
             browser.get(self.url)
@@ -87,12 +90,18 @@ class Page:
         try:
             while time.time() < end_time:
                 if all([
-                        True if min_count is None else True if len(self.posts) > min_count else False,
-                        True if time_until is None else True if self.posts[-1].creation_time < time_until else False,
+                        True if min_count is None else True if len(self.posts) >= min_count else False,
+                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].creation_time <= time_until else False,
                 ]):
                     return
         finally:
             stop = True
+
+    def export(self, attributes: list[str], post_attributes: list[str]):
+        data = {a: getattr(self, a, None) for a in attributes}
+        if 'posts' in attributes:
+            data.update({'posts': {post.id: {a: getattr(post, a, None) for a in post_attributes} for post in self.posts}})
+        return json.dumps(data, ensure_ascii=False)
 
 
 class Post:
@@ -101,13 +110,16 @@ class Post:
         self.page: Page = page
         self.id: int = id if id else None
         self.pfbid: str = pfbid if pfbid else None
-        self.url: str = f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.id if self.id else self.pfbid}'
         self.comments: list[Comment] = []
 
     def __repr__(self):
         return f'<Facebook post: {self.page.alias if self.page.alias else self.page.id}:{self.id if self.id else self.pfbid}>'
 
-    def get_comments(self, browser: ChromeProcess, min_count: int = 10, timeout: int = 10):
+    @property
+    def url(self):
+        return f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.id if self.id else self.pfbid}'
+
+    def get_comments(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10):
 
         def load_page():
             nonlocal stop
@@ -247,11 +259,17 @@ class Post:
         try:
             while time.time() < end_time:
                 if all([
-                        True if min_count is None else True if len(self.comments) > min_count else False,
+                        True if min_count is None else True if len(self.comments) >= min_count else False,
                 ]):
                     return
         finally:
             stop = True
+
+    def export(self, attributes: list[str], comment_attributes: list[str]):
+        data = {a: getattr(self, a, None) for a in attributes}
+        if 'comments' in attributes:
+            data.update({'comments': {comment.id: {a: getattr(comment, a, None) for a in comment_attributes} for comment in self.comments}})
+        return json.dumps(data, ensure_ascii=False)
 
 
 class Comment:
@@ -260,7 +278,10 @@ class Comment:
         self.page: Page = page
         self.post: Post = post
         self.id: int = id
-        self.url: str = f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.post.id if self.post.id else self.post.pfbid}?comment_id={id}'
 
     def __repr__(self):
         return f'<Facebook post: {self.page.alias if self.page.alias else self.page.id}:{self.id if self.id else self.pfbid}>'
+
+    @property
+    def url(self):
+        return f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.post.id if self.post.id else self.post.pfbid}?comment_id={id}'
