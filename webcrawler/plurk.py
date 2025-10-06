@@ -54,75 +54,81 @@ class Search:
                     response = response_queue.get()
                     if response['users']:
                         for u in response['users'].values():
-                            user = User(u['id'])
-                            user.nickname = u['nick_name']
-                            user.display_name = u['display_name']
-                            user.avatar = u['avatar']
-                            user.premium = u['premium']
-                            if u['date_of_birth']:
-                                user.brithday = dateutil.parser.parse(u['date_of_birth'])
-                            user.status = u['status']
-                            user.name_color = u['name_color']
-                            user.brithday_privacy = u['bday_privacy']
-                            user.has_profile_image = u['has_profile_image']
-                            user.timeline_privacy = u['timeline_privacy']
-                            user.gender = u['gender']
-                            user.karma = u['karma']
-                            user.verified_account = u['verified_account']
-                            user.dateformat = u['dateformat']
-                            user.default_lang = u['default_lang']
-                            user.friend_list_privacy = u['friend_list_privacy']
-                            user.show_location = u['show_location']
-                            user.full_name = u['full_name']
-                            user.relationship = u['relationship']
-                            user.location = u['location']
-                            user.timezone = u['timezone']
-                            user.email_confirmed = u['email_confirmed']
-                            user.phone_verified = u['phone_verified']
-                            user.pinned_plurk_id = u['pinned_plurk_id']
-                            user.background_id = u['background_id']
-                            user.recruited = u['recruited']
-                            user.show_ads = u['show_ads']
-                            self.users.update({user.id: user})
+                            try:
+                                user = User(u['id'])
+                                user.nickname = u['nick_name']
+                                user.display_name = u['display_name']
+                                user.avatar = u['avatar']
+                                user.premium = u['premium']
+                                if u['date_of_birth']:
+                                    user.brithday = dateutil.parser.parse(u['date_of_birth'])
+                                user.status = u['status']
+                                user.name_color = u['name_color']
+                                user.brithday_privacy = u['bday_privacy']
+                                user.has_profile_image = u['has_profile_image']
+                                user.timeline_privacy = u['timeline_privacy']
+                                user.gender = u['gender']
+                                user.karma = u['karma']
+                                user.verified_account = u['verified_account']
+                                user.dateformat = u['dateformat']
+                                user.default_lang = u['default_lang']
+                                user.friend_list_privacy = u['friend_list_privacy']
+                                user.show_location = u['show_location']
+                                user.full_name = u['full_name']
+                                user.relationship = u['relationship']
+                                user.location = u['location']
+                                user.timezone = u['timezone']
+                                user.email_confirmed = u['email_confirmed']
+                                user.phone_verified = u['phone_verified']
+                                user.pinned_plurk_id = u['pinned_plurk_id']
+                                user.background_id = u['background_id']
+                                user.recruited = u['recruited']
+                                user.show_ads = u['show_ads']
+                                self.users.update({user.id: user})
+                            except:
+                                continue
                     for p in response['plurks']:
                         if len(self.posts):
                             if p['id'] == self.posts[-1].id:
                                 stop = True
                                 return
-                        post = Post(p['id'])
-                        post.query=self.query
-                        post.author = self.users[p['user_id']]
-                        post.qualifier = p['qualifier']
-                        post.content = p['content']
-                        post.content_raw = p['content_raw']
-                        post.lang = p['lang']
-                        post.response_count = p['response_count']
-                        post.responses_seen = p['responses_seen']
-                        post.limited_to = p['limited_to']
-                        post.excluded = p['excluded']
-                        post.no_comments = p['no_comments']
-                        post.plurk_type = p['plurk_type']
-                        post.is_unread = p['is_unread']
-                        post.created_time = dateutil.parser.parse(p['posted'])
-                        if p['last_edited']:
-                            post.modified_time = dateutil.parser.parse(p['last_edited'])
-                        post.coins = p['coins']
-                        post.has_gift = p['has_gift']
-                        post.porn = p['porn']
-                        post.publish_to_followers = p['publish_to_followers']
-                        post.with_poll = p['with_poll']
-                        post.anonymous = p['anonymous']
-                        post.replurkable = p['replurkable']
-                        post.replurker_id = p['replurker_id']
-                        post.replurked = p['replurked']
-                        post.replurkers = [self.users[uid] if uid in self.users else User(uid) for uid in p['replurkers']]
-                        post.replurkers_count = p['replurkers_count']
-                        post.favorers = [self.users[uid] if uid in self.users else User(uid) for uid in p['favorers']]
-                        post.favorite_count = p['favorite_count']
-                        post.mentioned = p['mentioned']
-                        post.responded = p['responded']
-                        post.favorite = p['favorite']
-                        self.posts.append(post)
+                        try:
+                            post = Post(p['id'])
+                            post.query = self.query
+                            post.author = self.users[p['user_id']]
+                            post.qualifier = p['qualifier']
+                            post.content = p['content']
+                            post.content_raw = p['content_raw']
+                            post.lang = p['lang']
+                            post.response_count = p['response_count']
+                            post.responses_seen = p['responses_seen']
+                            post.limited_to = p['limited_to']
+                            post.excluded = p['excluded']
+                            post.no_comments = p['no_comments']
+                            post.plurk_type = p['plurk_type']
+                            post.is_unread = p['is_unread']
+                            post.created_time = dateutil.parser.parse(p['posted'])
+                            if p['last_edited']:
+                                post.modified_time = dateutil.parser.parse(p['last_edited'])
+                            post.coins = p['coins']
+                            post.has_gift = p['has_gift']
+                            post.porn = p['porn']
+                            post.publish_to_followers = p['publish_to_followers']
+                            post.with_poll = p['with_poll']
+                            post.anonymous = p['anonymous']
+                            post.replurkable = p['replurkable']
+                            post.replurker_id = p['replurker_id']
+                            post.replurked = p['replurked']
+                            post.replurkers = [self.users[uid] if uid in self.users else User(uid) for uid in p['replurkers']]
+                            post.replurkers_count = p['replurkers_count']
+                            post.favorers = [self.users[uid] if uid in self.users else User(uid) for uid in p['favorers']]
+                            post.favorite_count = p['favorite_count']
+                            post.mentioned = p['mentioned']
+                            post.responded = p['responded']
+                            post.favorite = p['favorite']
+                            self.posts.append(post)
+                        except:
+                            continue
                     try:
                         next_id.put(self.posts[-1].id)
                     except queue.ShutDown:
@@ -192,52 +198,59 @@ class Post:
                     response = response_queue.get()
                     if response['users']:
                         for u in response['users'].values():
-                            user = User(u['id'])
-                            user.nickname = u['nick_name']
-                            user.display_name = u['display_name']
-                            user.avatar = u['avatar']
-                            user.premium = u['premium']
-                            if u['date_of_birth']:
-                                user.brithday = dateutil.parser.parse(u['date_of_birth'])
-                            user.status = u['status']
-                            user.name_color = u['name_color']
-                            user.brithday_privacy = u['bday_privacy']
-                            user.has_profile_image = u['has_profile_image']
-                            user.timeline_privacy = u['timeline_privacy']
-                            user.gender = u['gender']
-                            user.karma = u['karma']
-                            user.verified_account = u['verified_account']
-                            user.dateformat = u['dateformat']
-                            user.default_lang = u['default_lang']
-                            user.friend_list_privacy = u['friend_list_privacy']
-                            user.show_location = u['show_location']
-                            self.users.update({user.id: user})
+                            try:
+                                user = User(u['id'])
+                                user.nickname = u['nick_name']
+                                user.display_name = u['display_name']
+                                user.avatar = u['avatar']
+                                user.premium = u['premium']
+                                if u['date_of_birth']:
+                                    user.brithday = dateutil.parser.parse(u['date_of_birth'])
+                                user.status = u['status']
+                                user.name_color = u['name_color']
+                                user.brithday_privacy = u['bday_privacy']
+                                user.has_profile_image = u['has_profile_image']
+                                user.timeline_privacy = u['timeline_privacy']
+                                user.gender = u['gender']
+                                user.karma = u['karma']
+                                user.verified_account = u['verified_account']
+                                user.dateformat = u['dateformat']
+                                user.default_lang = u['default_lang']
+                                user.friend_list_privacy = u['friend_list_privacy']
+                                user.show_location = u['show_location']
+                                self.users.update({user.id: user})
+                            except:
+                                continue
                     for c in response['responses']:
                         if len(self.comments):
                             if c['id'] == self.comments[-1].id:
                                 stop = True
                                 return
-                        comment = Comment(self, c['id'], floor)
-                        if len(response['users']) == 0:
-                            if c['handle'] in self.users:
-                                comment.author = self.users[c['handle']]
+                        try:
+                            comment = Comment(self, c['id'], floor)
+                            if len(response['users']) == 0:
+                                if c['handle'] in self.users:
+                                    comment.author = self.users[c['handle']]
+                                else:
+                                    comment.author = User(99999)
+                                    comment.author.handle = c['handle']
+                                    self.users.update({comment.author.handle: comment.author})
                             else:
-                                comment.author = User(99999)
-                                comment.author.handle = c['handle']
-                                self.users.update({comment.author.handle: comment.author})
-                        else:
-                            comment.author = self.users[c['user_id']]
-                        comment.content = c['content']
-                        comment.content_raw = c['content_raw']
-                        comment.qualifier = c['qualifier']
-                        comment.created_time = dateutil.parser.parse(c['posted'])
-                        if c['last_edited']:
-                            comment.modified_time = dateutil.parser.parse(c['last_edited'])
-                        comment.lang = c['lang']
-                        comment.coins = c['coins']
-                        comment.editability = c['editability']
-                        self.comments.append(comment)
-                        floor += 1
+                                comment.author = self.users[c['user_id']]
+                            comment.content = c['content']
+                            comment.content_raw = c['content_raw']
+                            comment.qualifier = c['qualifier']
+                            comment.created_time = dateutil.parser.parse(c['posted'])
+                            if c['last_edited']:
+                                comment.modified_time = dateutil.parser.parse(c['last_edited'])
+                            comment.lang = c['lang']
+                            comment.coins = c['coins']
+                            comment.editability = c['editability']
+                            self.comments.append(comment)
+                        except:
+                            continue
+                        finally:
+                            floor += 1
                     try:
                         if len(self.comments):
                             next_id.put(self.comments[-1].id)
