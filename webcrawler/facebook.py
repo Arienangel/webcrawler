@@ -15,6 +15,7 @@ class Page:
     def __init__(self, id: int = None, alias: str = None):
         self.id: int = id if id else None
         self.alias: str = alias if alias else None
+        self.name = None
         self.posts: list[Post] = []
 
     def __repr__(self):
@@ -24,11 +25,11 @@ class Page:
     def url(self):
         return f'https://www.facebook.com/{self.id if self.id else self.alias}'
 
-    def get_posts(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30):
+    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30):
 
         def load_page():
             browser.get(self.url)
-            time.sleep(3)
+            time.sleep(5)
             while not stop:
                 browser.cdp.send('Runtime.evaluate', expression='''document.querySelector('div[role="dialog"] i.x1b0d499.x1d69dk1').click()''')
                 browser.scroll(
@@ -50,10 +51,7 @@ class Page:
                         if self.url in r['params']['response']['url']:
                             time.sleep(2)
                             response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
-                            posts = [
-                                json.loads(BeautifulSoup(response, features='html.parser').find('script', type='application/json', string=re.compile(r'"post_id"')).text)['require'][0][3][0]['__bbox']
-                                ['require'][-7][3][1]['__bbox']['result']['data']['user']['timeline_list_feed_units']['edges'][0]['node']
-                            ]
+                            posts = [json.loads(BeautifulSoup(response, features='html.parser').find('script', type='application/json', string=re.compile(r'"post_id"')).text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['user']['timeline_list_feed_units']['edges'][0]['node']]
                             self.id = int(posts[0]['comet_sections']['content']['story']['actors'][0]['id'])
                             self.alias = posts[0]['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1]
                             self.name = posts[0]['comet_sections']['content']['story']['actors'][0]['name']
@@ -68,12 +66,10 @@ class Page:
                             continue
                         for p in posts:
                             post = Post(self, id=int(p['comet_sections']['content']['story']['post_id']), pfbid=p['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1])
-                            if p['comet_sections']['content']['story']['message']: post.text = p['comet_sections']['content']['story']['message']['text']
-                            if p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']:
-                                post.title = p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text']
-                            post.creation_time = datetime.datetime.fromtimestamp(p['comet_sections']['timestamp']['story']['creation_time'])
-                            post.reaction_count = p['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context'][
-                                'comet_ufi_summary_and_actions_renderer']['feedback']['reaction_count']['count']
+                            post.content = p['comet_sections']['content']['story']['message']['text'] if p['comet_sections']['content']['story']['message'] else None
+                            post.title = p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else None
+                            post.created_time = datetime.datetime.fromtimestamp(p['comet_sections']['timestamp']['story']['creation_time'])
+                            post.reaction_count = p['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comet_ufi_summary_and_actions_renderer']['feedback']['reaction_count']['count']
                             if 'attachments' in p['comet_sections']['content']['story']:
                                 if 'all_subattachments' in p['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']:
                                     post.attachments = [media['url'] for media in p['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']['all_subattachments']['nodes']]
@@ -92,17 +88,11 @@ class Page:
             while time.time() < end_time:
                 if all([
                         True if min_count is None else True if len(self.posts) >= min_count else False,
-                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].creation_time <= time_until else False,
+                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time <= time_until else False,
                 ]):
                     return
         finally:
             stop = True
-
-    def export(self, attributes: list[str], post_attributes: list[str]):
-        data = {a: getattr(self, a, None) for a in attributes}
-        if 'posts' in attributes:
-            data.update({'posts': {post.id: {a: getattr(post, a, None) for a in post_attributes} for post in self.posts}})
-        return json.dumps(data, ensure_ascii=False)
 
 
 class Post:
@@ -120,12 +110,12 @@ class Post:
     def url(self):
         return f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.id if self.id else self.pfbid}'
 
-    def get_post(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10):
+    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10):
 
         def load_page():
             nonlocal stop
             browser.get(self.url)
-            time.sleep(3)
+            time.sleep(5)
             while not stop:
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
@@ -146,21 +136,16 @@ class Post:
                         if self.url in r['params']['response']['url']:
                             time.sleep(3)
                             response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
-                            post = json.loads(BeautifulSoup(response, features='html.parser').find(
-                                'script', type='application/json', string=re.compile(r'"post_id"')).text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['node']
+                            post = json.loads(BeautifulSoup(response, features='html.parser').find('script', type='application/json', string=re.compile(r'"post_id"')).text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['node']
                             if self.page.id != int(post['comet_sections']['content']['story']['actors'][0]['id']):
-                                self.page = Page(id=int(post['comet_sections']['content']['story']['actors'][0]['id']),
-                                                 alias=post['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1])
+                                self.page = Page(id=int(post['comet_sections']['content']['story']['actors'][0]['id']), alias=post['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1])
                                 self.page.name = post['comet_sections']['content']['story']['actors'][0]['name']
                             self.id = int(post['comet_sections']['content']['story']['post_id'])
                             self.pfbid = post['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1]
-                            if post['comet_sections']['content']['story']['message']:
-                                self.text = post['comet_sections']['content']['story']['message']['text']
-                            if post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']:
-                                self.title = post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text']
-                            self.creation_time = datetime.datetime.fromtimestamp(post['comet_sections']['timestamp']['story']['creation_time'])
-                            self.reaction_count = post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context'][
-                                'comet_ufi_summary_and_actions_renderer']['feedback']['reaction_count']['count']
+                            self.content = post['comet_sections']['content']['story']['message']['text'] if post['comet_sections']['content']['story']['message'] else None
+                            self.title = post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else None
+                            self.created_time = datetime.datetime.fromtimestamp(post['comet_sections']['timestamp']['story']['creation_time'])
+                            self.reaction_count = post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comet_ufi_summary_and_actions_renderer']['feedback']['reaction_count']['count']
                             if 'attachments' in post['comet_sections']['content']['story']:
                                 if 'all_subattachments' in post['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']:
                                     self.attachments = [media['url'] for media in post['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']['all_subattachments']['nodes']]
@@ -185,11 +170,10 @@ class Post:
                             self.video_override_url = post['comet_sections']['timestamp']['video_override_url']
                             self.unpublished_content_type = post['comet_sections']['timestamp']['story']['unpublished_content_type']
                             self.ghl_label = post['comet_sections']['timestamp']['story']['ghl_label']
-                            for c in post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comment_list_renderer'][
-                                    'feedback']['comment_rendering_instance_for_feed_location']['comments']['edges']:
+                            for c in post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comment_list_renderer']['feedback']['comment_rendering_instance_for_feed_location']['comments']['edges']:
                                 comment = Comment(self.page, self, c['node']['legacy_fbid'])
-                                comment.text = c['node']['body']['text']
-                                comment.creation_time = datetime.datetime.fromtimestamp(c['node']['created_time'])
+                                comment.content = c['node']['body']['text']
+                                comment.created_time = datetime.datetime.fromtimestamp(c['node']['created_time'])
                                 comment.reaction_count = c['node']['feedback']['reactors']['count_reduced']
                                 if self.page.id == c['node']['author']['id']:
                                     comment.author = self.page
@@ -199,7 +183,10 @@ class Post:
                                         comment.author.pfbid = c['node']['author']['id']
                                     else:
                                         comment.author = Page(int(c['node']['author']['id']))
-                                    if c['node']['author']['url']: comment.author.alias = c['node']['author']['url'].split('/')[-1]
+                                    if c['node']['author']['name']:
+                                        comment.author.name = c['node']['author']['name']
+                                    if c['node']['author']['url']:
+                                        comment.author.alias = c['node']['author']['url'].split('/')[-1]
                                 comment.should_show_reply_count = c['node']['feedback']['expansion_info']['should_show_reply_count']
                                 comment.viewer_actor = c['node']['feedback']['viewer_actor']
                                 comment.if_viewer_can_comment_anonymously = c['node']['feedback']['if_viewer_can_comment_anonymously']
@@ -260,12 +247,6 @@ class Post:
                     return
         finally:
             stop = True
-
-    def export(self, attributes: list[str], comment_attributes: list[str]):
-        data = {a: getattr(self, a, None) for a in attributes}
-        if 'comments' in attributes:
-            data.update({'comments': {comment.id: {a: getattr(comment, a, None) for a in comment_attributes} for comment in self.comments}})
-        return json.dumps(data, ensure_ascii=False)
 
 
 class Comment:
