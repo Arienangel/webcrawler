@@ -170,18 +170,18 @@ class plurk_crawler:
     def write_posts_db(self, posts: list[plurk.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
             for post in posts:
-                db.execute(f'CREATE TABLE IF NOT EXISTS `{post.query}` ("id" INTEGAR UNIQUE, "time" INTEGAR, "author_id" INTEGAR, "author_name" TEXT, "content" TEXT);')
+                db.execute(f'CREATE TABLE IF NOT EXISTS `{post.query}` ("id" INTEGAR UNIQUE, "time" INTEGAR, "author_id" INTEGAR, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
                 cursor = db.execute(f'SELECT id FROM `{post.query}` WHERE id=?;', [post.id])
                 if not cursor.fetchall():
-                    db.execute(f'INSERT INTO `{post.query}` VALUES (?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.id, post.author.nickname, post.content_raw])
+                    db.execute(f'INSERT INTO `{post.query}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.id, post.author.nickname, post.author.display_name, post.content_raw])
 
     def write_comments_db(self, comments: list[plurk.Comment], db_path: str):
         with sqlite3.connect(db_path) as db:
             for comment in comments:
-                db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "id" INTEGAR, "time" INTEGAR, "author_id" INTEGAR, "author_name" TEXT, "content" TEXT);')
+                db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "id" INTEGAR, "time" INTEGAR, "author_id" INTEGAR, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
                 cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                 if not cursor.fetchall():
-                    db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?);', [comment.floor, comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.nickname, comment.content])
+                    db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?,?);', [comment.floor, comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.nickname, comment.author.display_name, comment.content])
 
 
 class ptt_crawler:
