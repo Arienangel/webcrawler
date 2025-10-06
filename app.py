@@ -44,9 +44,12 @@ class dcard_crawler:
                     forum.get(self.browser, **forum_get_kwargs)
                 for post in forum.posts[::-1]:
                     if self.do_post_get:
-                        time.sleep(5)
-                        post.get(self.browser, **post_get_kwargs)
-                        self.queue_comments.put(post.comments)
+                        try:
+                            time.sleep(5)
+                            post.get(self.browser, **post_get_kwargs)
+                            self.queue_comments.put(post.comments)
+                        except:
+                            continue
                     self.queue_posts.put([post])
         finally:
             self.stop = True
@@ -54,18 +57,24 @@ class dcard_crawler:
     def write_posts_db(self, posts: list[dcard.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
             for post in posts:
-                db.execute(f'CREATE TABLE IF NOT EXISTS `{post.forum.alias}` ("id" INTEGAR UNIQUE, "created_time" INTEGAR, "author_school" TEXT, "author_department" TEXT, "title" TEXT, "content" TEXT);')
-                cursor = db.execute(f'SELECT id FROM `{post.forum.alias}` WHERE id=?;', [post.id])
-                if not cursor.fetchall():
-                    db.execute(f'INSERT INTO `{post.forum.alias}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.school, post.author.department, post.title, post.content])
+                try:
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.forum.alias}` ("id" INTEGAR UNIQUE, "created_time" INTEGAR, "author_school" TEXT, "author_department" TEXT, "title" TEXT, "content" TEXT);')
+                    cursor = db.execute(f'SELECT id FROM `{post.forum.alias}` WHERE id=?;', [post.id])
+                    if not cursor.fetchall():
+                        db.execute(f'INSERT INTO `{post.forum.alias}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.school, post.author.department, post.title, post.content])
+                except:
+                    continue
 
     def write_comments_db(self, comments: list[dcard.Comment], db_path: str):
         with sqlite3.connect(db_path) as db:
             for comment in comments:
-                db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "created_time" INTEGAR, "author_school" TEXT, "author_department" TEXT, "content" TEXT);')
-                cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
-                if not cursor.fetchall():
-                    db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.created_time.timestamp()), comment.author.school, comment.author.department, comment.content])
+                try:
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "created_time" INTEGAR, "author_school" TEXT, "author_department" TEXT, "content" TEXT);')
+                    cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
+                    if not cursor.fetchall():
+                        db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.created_time.timestamp()), comment.author.school, comment.author.department, comment.content])
+                except:
+                    continue
 
 
 class facebook_crawler:
@@ -102,9 +111,12 @@ class facebook_crawler:
                     page.get(self.browser, **page_get_kwargs)
                 for post in page.posts[::-1]:
                     if self.do_post_get:
-                        time.sleep(5)
-                        post.get(self.browser, **post_get_kwargs)
-                        self.queue_comments.put(post.comments)
+                        try:
+                            time.sleep(5)
+                            post.get(self.browser, **post_get_kwargs)
+                            self.queue_comments.put(post.comments)
+                        except:
+                            continue
                     self.queue_posts.put([post])
         finally:
             self.stop = True
@@ -112,18 +124,24 @@ class facebook_crawler:
     def write_posts_db(self, posts: list[facebook.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
             for post in posts:
-                db.execute(f'CREATE TABLE IF NOT EXISTS `{post.page.id}` ("id" INTEGAR UNIQUE, "pfbid" TEXT, "created_time" INTEGAR, "title" TEXT, "content" TEXT);')
-                cursor = db.execute(f'SELECT id FROM `{post.page.id}` WHERE id=?;', [post.id])
-                if not cursor.fetchall():
-                    db.execute(f'INSERT INTO `{post.page.id}` VALUES (?,?,?,?,?);', [post.id, post.pfbid, int(post.created_time.timestamp()), post.title, post.content])
+                try:
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.page.id}` ("id" INTEGAR UNIQUE, "pfbid" TEXT, "created_time" INTEGAR, "title" TEXT, "content" TEXT);')
+                    cursor = db.execute(f'SELECT id FROM `{post.page.id}` WHERE id=?;', [post.id])
+                    if not cursor.fetchall():
+                        db.execute(f'INSERT INTO `{post.page.id}` VALUES (?,?,?,?,?);', [post.id, post.pfbid, int(post.created_time.timestamp()), post.title, post.content])
+                except:
+                    continue
 
     def write_comments_db(self, comments: list[facebook.Comment], db_path: str):
         with sqlite3.connect(db_path) as db:
             for comment in comments:
-                db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("id" INTEGAR UNIQUE, "created_time" INTEGAR, "author_id" INTEGAR, "author_alias" TEXT, "author_name" TEXT, "content" TEXT);')
-                cursor = db.execute(f'SELECT id FROM `{comment.post.id}` WHERE id=?;', [comment.id])
-                if not cursor.fetchall():
-                    db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?);', [comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.alias, comment.author.name, comment.content])
+                try:
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("id" INTEGAR UNIQUE, "created_time" INTEGAR, "author_id" INTEGAR, "author_alias" TEXT, "author_name" TEXT, "content" TEXT);')
+                    cursor = db.execute(f'SELECT id FROM `{comment.post.id}` WHERE id=?;', [comment.id])
+                    if not cursor.fetchall():
+                        db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?);', [comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.alias, comment.author.name, comment.content])
+                except:
+                    continue
 
 
 class plurk_crawler:
@@ -160,9 +178,12 @@ class plurk_crawler:
                     search.get(self.browser, **search_get_kwargs)
                 for post in search.posts[::-1]:
                     if self.do_post_get:
-                        time.sleep(16)
-                        post.get(self.browser, **post_get_kwargs)
-                        self.queue_comments.put(post.comments)
+                        try:
+                            time.sleep(16)
+                            post.get(self.browser, **post_get_kwargs)
+                            self.queue_comments.put(post.comments)
+                        except:
+                            continue
                     self.queue_posts.put([post])
         finally:
             self.stop = True
@@ -170,18 +191,24 @@ class plurk_crawler:
     def write_posts_db(self, posts: list[plurk.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
             for post in posts:
-                db.execute(f'CREATE TABLE IF NOT EXISTS `{post.query}` ("id" INTEGAR UNIQUE, "time" INTEGAR, "author_id" INTEGAR, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
-                cursor = db.execute(f'SELECT id FROM `{post.query}` WHERE id=?;', [post.id])
-                if not cursor.fetchall():
-                    db.execute(f'INSERT INTO `{post.query}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.id, post.author.nickname, post.author.display_name, post.content_raw])
+                try:
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.query}` ("id" INTEGAR UNIQUE, "time" INTEGAR, "author_id" INTEGAR, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
+                    cursor = db.execute(f'SELECT id FROM `{post.query}` WHERE id=?;', [post.id])
+                    if not cursor.fetchall():
+                        db.execute(f'INSERT INTO `{post.query}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.id, post.author.nickname, post.author.display_name, post.content_raw])
+                except:
+                    continue
 
     def write_comments_db(self, comments: list[plurk.Comment], db_path: str):
         with sqlite3.connect(db_path) as db:
             for comment in comments:
-                db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "id" INTEGAR, "time" INTEGAR, "author_id" INTEGAR, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
-                cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
-                if not cursor.fetchall():
-                    db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?,?);', [comment.floor, comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.nickname, comment.author.display_name, comment.content])
+                try:
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "id" INTEGAR, "time" INTEGAR, "author_id" INTEGAR, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
+                    cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
+                    if not cursor.fetchall():
+                        db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?,?);', [comment.floor, comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.nickname, comment.author.display_name, comment.content])
+                except:
+                    continue
 
 
 class ptt_crawler:
@@ -218,9 +245,12 @@ class ptt_crawler:
                     forum.get(self.browser, **forum_get_kwargs)
                 for post in forum.posts[::-1]:
                     if self.do_post_get:
-                        time.sleep(2)
-                        post.get(self.browser, **post_get_kwargs)
-                        self.queue_comments.put(post.comments)
+                        try:
+                            time.sleep(2)
+                            post.get(self.browser, **post_get_kwargs)
+                            self.queue_comments.put(post.comments)
+                        except:
+                            continue
                     self.queue_posts.put([post])
         finally:
             self.stop = True
@@ -228,18 +258,24 @@ class ptt_crawler:
     def write_posts_db(self, posts: list[ptt.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
             for post in posts:
-                db.execute(f'CREATE TABLE IF NOT EXISTS `{post.forum.name}` ("id" TEXT UNIQUE, "time" INTEGAR, "author" TEXT, "title" TEXT, "content" TEXT);')
-                cursor = db.execute(f'SELECT id FROM `{post.forum.name}` WHERE id=?;', [post.id])
-                if not cursor.fetchall():
-                    db.execute(f'INSERT INTO `{post.forum.name}` VALUES (?,?,?,?,?);', [post.id, int(post.time.timestamp()), post.author, post.title, post.content])
+                try:
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.forum.name}` ("id" TEXT UNIQUE, "time" INTEGAR, "author" TEXT, "title" TEXT, "content" TEXT);')
+                    cursor = db.execute(f'SELECT id FROM `{post.forum.name}` WHERE id=?;', [post.id])
+                    if not cursor.fetchall():
+                        db.execute(f'INSERT INTO `{post.forum.name}` VALUES (?,?,?,?,?);', [post.id, int(post.time.timestamp()), post.author, post.title, post.content])
+                except:
+                    continue
 
     def write_comments_db(self, comments: list[plurk.Comment], db_path: str):
         with sqlite3.connect(db_path) as db:
             for comment in comments:
-                db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "time" INTEGAR, "reaction" TEXT, "author" TEXT, "content" TEXT);')
-                cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
-                if not cursor.fetchall():
-                    db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.time.timestamp()), comment.reaction, comment.author, comment.content])
+                try:
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "time" INTEGAR, "reaction" TEXT, "author" TEXT, "content" TEXT);')
+                    cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
+                    if not cursor.fetchall():
+                        db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.time.timestamp()), comment.reaction, comment.author, comment.content])
+                except:
+                    continue
 
 
 if __name__ == '__main__':
