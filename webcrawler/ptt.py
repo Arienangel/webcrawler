@@ -76,15 +76,18 @@ class Post:
             self.ip, self.country = location.groups()
         year, month = self.time.year, self.time.month
         for floor, c in enumerate(response.select('div#main-content > div.push'), 1):
-            comment = Comment(self.forum, self, floor)
-            comment.reaction = c.select('span.push-tag')[0].text.strip()
-            comment.author = c.select('span.push-userid')[0].text
-            comment.content = c.select('span.push-content')[0].text.lstrip(': ')
-            time = c.select('span.push-ipdatetime')[0].text.strip()
-            if int(time[:2]) < month: year += 1
-            comment.time = dateutil.parser.parse(f'{year}/{time}')
-            month = comment.time.year
-            self.comments.append(comment)
+            try:
+                comment = Comment(self.forum, self, floor)
+                comment.reaction = c.select('span.push-tag')[0].text.strip()
+                comment.author = c.select('span.push-userid')[0].text
+                comment.content = c.select('span.push-content')[0].text.lstrip(': ')
+                time = c.select('span.push-ipdatetime')[0].text.strip()
+                if int(time[:2]) < month: year += 1
+                comment.time = dateutil.parser.parse(f'{year}/{time}')
+                month = comment.time.year
+                self.comments.append(comment)
+            except:
+                continue
 
 
 class Comment:

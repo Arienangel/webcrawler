@@ -1,10 +1,12 @@
 import atexit
 import json
+import queue
 import random
 import subprocess
 import threading
 import time
 from collections import defaultdict
+from typing import Literal
 
 import requests
 import websocket
@@ -67,7 +69,6 @@ class ChromeDriver(webdriver.Chrome):
             self.quit()
 
 
-# https://chromedevtools.github.io/devtools-protocol
 class ChromeProcess:
 
     def __init__(
@@ -106,12 +107,15 @@ class ChromeProcess:
             self.cdp.send('Network.enable')
         atexit.register(self.stop)
 
-    def get(self, url: str, **params):
-        self.cdp.send('Page.navigate', url=url, **params)
+    @property
+    def page_source(self) -> str:
+        return self.cdp.page_source
 
-    def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25):
-        self.cdp.send('Input.synthesizeScrollGesture', x=x, y=y, xDistance=x_distance, yDistance=y_distance, speed=speed, repeatCount=count - 1, repeatDelayMs=int(repeat_delay * 1000))
-        time.sleep(max(abs(x_distance), abs(y_distance)) / speed * count + repeat_delay * (count - 1))
+    def get(self, url: str, **params):
+        self.cdp.get(url, **params)
+
+    def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25, **params):
+        self.cdp.scroll(x, y, x_distance, y_distance, speed, count, repeat_delay, **params)
 
     def __enter__(self):
         return self
@@ -127,25 +131,40 @@ class ChromeProcess:
                 self.process.terminate()
 
 
+# https://chromedevtools.github.io/devtools-protocol
 class CDP:
 
-    def __init__(self, remote_debugging_host: str = '127.0.0.1', remote_debugging_port: str = 9222):
+    def __init__(self, remote_debugging_host: str = '127.0.0.1', remote_debugging_port: str = 9222, timeout: float = 10):
         self.remote_debugging_host = remote_debugging_host
         self.remote_debugging_port = remote_debugging_port
-        self.websocket_url = requests.get(f'http://{self.remote_debugging_host}:{self.remote_debugging_port}/json').json()[0]['webSocketDebuggerUrl']
+        end_time = time.time() + timeout
+        while time.time() < end_time:
+            try:
+                self.websocket_url = requests.get(f'http://{self.remote_debugging_host}:{self.remote_debugging_port}/json').json()[0]['webSocketDebuggerUrl']
+                break
+            except:
+                continue
+        else:
+            raise TimeoutError(f'Failed to connect http://{self.remote_debugging_host}:{self.remote_debugging_port}/json')
         self.websocket = websocket.create_connection(self.websocket_url)
         self.received = list()
         self._used_id = set()
+        self._listeners: dict = dict()
         self._running = True
         self._recv_thread = threading.Thread(target=self._recv)
         self._recv_thread.start()
         atexit.register(self.stop)
 
+    @property
+    def page_source(self) -> str:
+        nodeId = self.get_received_by_id(self.send('DOM.getDocument'))['result']['root']['nodeId']
+        return self.get_received_by_id(self.send('DOM.getOuterHTML', nodeId=nodeId))['result']['outerHTML']
+
     def get(self, url: str, **params):
         self.send('Page.navigate', url=url, **params)
 
-    def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25):
-        self.send('Input.synthesizeScrollGesture', x=x, y=y, xDistance=x_distance, yDistance=y_distance, speed=speed, repeatCount=count - 1, repeatDelayMs=int(repeat_delay * 1000))
+    def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25, **params):
+        self.send('Input.synthesizeScrollGesture', x=x, y=y, xDistance=x_distance, yDistance=y_distance, speed=speed, repeatCount=count - 1, repeatDelayMs=int(repeat_delay * 1000), **params)
         time.sleep(max(abs(x_distance), abs(y_distance)) / speed * count + repeat_delay * (count - 1))
 
     def send(self, method: str, **params):
@@ -165,12 +184,38 @@ class CDP:
         else:
             raise ValueError(f'{id = } not found')
 
+    def add_listener(self, cdp_method: str = None, request_id: str = None, resource_type: str = None, url_exact: str = None, url_contain: str = None, status_code: int = None):
+
+        def listener(response: dict):
+            check = []
+            try:
+                if cdp_method: check.append(response['method'] == cdp_method)
+                if request_id: check.append(response['params']['requestId'] == request_id)
+                if resource_type: check.append(response['params']['type'] == resource_type)
+                if status_code: check.append(response['params']['response']['status'] == status_code)
+                if url_exact: check.append(response['params']['response']['url'] == url_exact)
+                if url_contain: check.append(url_contain in response['params']['response']['url'])
+            except:
+                return
+            if all(check):
+                q.put(response)
+                print(cdp_method, url_contain, response)
+
+        q = queue.Queue()
+        self._listeners.update({q: listener})
+        return q
+
     def _recv(self):
         while self._running:
             try:
                 data = defaultdict(lambda: None)
                 data.update(json.loads(self.websocket.recv()))
                 self.received.append(data)
+                for q, listener in self._listeners.items():
+                    try:
+                        listener(data)
+                    except queue.ShutDown:
+                        del self._listeners[q]
             except:
                 if self._running:
                     continue
