@@ -23,11 +23,11 @@ class Forum:
     def url(self):
         return f'https://www.dcard.tw/f/{self.alias}?tab=latest'
 
-    def get_posts(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30):
+    def get(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30):
 
         def load_page():
             browser.get(self.url, referrer='https://www.google.com/')
-            time.sleep(3)
+            time.sleep(5)
             while not stop:
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
@@ -50,11 +50,11 @@ class Forum:
                             self.id = response['id']
                             self.name = response['name']
                             self.description = response['description']
+                            self.created_time = dateutil.parser.parse(response['createdAt'])
+                            self.modified_time = dateutil.parser.parse(response['updatedAt'])
                             self.subscriptionCount = response['subscriptionCount']
-                            self.subscribedl = response['subscribed']
+                            self.subscribed = response['subscribed']
                             self.read = response['read']
-                            self.created_at = dateutil.parser.parse(response['createdAt'])
-                            self.updated_at = dateutil.parser.parse(response['updatedAt'])
                             self.can_post = response['canPost']
                             self.ignore_post = response['ignorePost']
                             self.invisible = response['invisible']
@@ -89,12 +89,74 @@ class Forum:
                             self.enable_edited_history = response['enableEditedHistory']
                             self.enable_immersive_video = response['enableImmersiveVideo']
                             self.discussion_volume = response['discussionVolume']
-                            self.latest_post_pinned_at = dateutil.parser.parse(response['latestPostPinnedAt'])
+                            self.latest_post_pinned_at = dateutil.parser.parse(response['latestPostPinnedAt']) if response['latestPostPinnedAt'] in response else None
                         elif 'https://www.dcard.tw/service/api/v2/globalPaging/page' in r['params']['response']['url']:
                             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                             for widget in response['widgets']:
                                 if 'forumList' in widget:
-                                    post = Post(self, widget['forumList']['items'][0]['post']['id'])
+                                    p = widget['forumList']['items'][0]['post']
+                                    post = Post(self, p['id'])
+                                    post.title = p['title']
+                                    post.excerpt = p['excerpt']
+                                    post.content = None
+                                    post.created_time = dateutil.parser.parse(p['createdAt'])
+                                    post.modified_time = dateutil.parser.parse(p['updatedAt'])
+                                    post.anonymous_school = p['anonymousSchool']
+                                    post.anonymous_department = p['anonymousDepartment']
+                                    post.with_nickname = p['withNickname']
+                                    post.author = User()
+                                    post.author.school = p['school'] if 'school' in p else None
+                                    post.author.department = p['department'] if 'department' in p else None
+                                    post.author.nickname = p['personaNickname'] if 'personaNickname' in p else None
+                                    post.author.id = p['personaUid'] if 'personaUid' in p else None
+                                    post.author.gender = p['gender'] if 'gender' in p else None
+                                    post.author.is_suspicious_account = p['isSuspiciousAccount']
+                                    post.author.is_moderator = p['isModerator']
+                                    post.author.verified_badge = p['verifiedBadge']
+                                    post.author.member_type = p['memberType']
+                                    post.author.creator_badge = p['creatorBadge'] if 'creatorBadge' in p else None
+                                    post.author.official_creatorBadge = p['officialCreatorBadge'] if 'officialCreatorBadge' in p else None
+                                    post.like_count = p['likeCount']
+                                    post.reactions = p['reactions']
+                                    post.comment_count = p['commentCount']
+                                    post.total_comment_count = p['totalCommentCount']
+                                    post.share_count = p['shareCount']
+                                    post.collection_count = p['collectionCount']
+                                    post.pinned = p['pinned']
+                                    post.reply_id = p['replyId']
+                                    post.tags = p['tags']
+                                    post.topics = p['topics']
+                                    post.report_reason = p['reportReason']
+                                    post.hidden_by_author = p['hiddenByAuthor']
+                                    post.pinned_in_profile_wall = p['pinnedInProfileWall']
+                                    post.hidden_in_profile_wall = p['hiddenInProfileWall']
+                                    post.nsfw = p['nsfw']
+                                    post.reply_title = p['replyTitle']
+                                    post.persona_subscriptable = p['personaSubscriptable']
+                                    post.identity_type = p['identityType']
+                                    post.quote_count = p['quoteCount']
+                                    post.hidden = p['hidden']
+                                    post.layout = p['layout']
+                                    post.spoiler_alert = p['spoilerAlert']
+                                    post.with_images = p['withImages']
+                                    post.with_videos = p['withVideos']
+                                    post.media = p['media']
+                                    post.report_reasonText = p['reportReasonText']
+                                    post.is_selected_post = p['isSelectedPost']
+                                    post.unsafe = p['unsafe']
+                                    post.enable_nested_comment = p['enableNestedComment']
+                                    post.media_meta = p['mediaMeta']
+                                    post.edited = p['edited']
+                                    post.links = p['links']
+                                    post.identity_idV3 = p['identityIdV3']
+                                    post.enable_list_link_preview = p['enableListLinkPreview']
+                                    post.post_avatar = p['postAvatar']
+                                    post.previews = p['previews']
+                                    post.is_blocker = p['isBlocker']
+                                    post.is_blocked = p['isBlocked']
+                                    post.excerpt_comments = p['excerptComments']
+                                    post.in_review = p['inReview']
+                                    post.activity_avatar = p['activityAvatar']
                                     self.posts.append(post)
 
         stop = False
@@ -114,12 +176,6 @@ class Forum:
         finally:
             stop = True
 
-    def export(self, attributes: list[str], post_attributes: list[str]):
-        data = {a: getattr(self, a, None) for a in attributes}
-        if 'posts' in attributes:
-            data.update({'posts': {post.id: {a: getattr(post, a, None) for a in post_attributes} for post in self.posts}})
-        return json.dumps(data, ensure_ascii=False)
-
 
 class Post:
 
@@ -135,12 +191,12 @@ class Post:
     def url(self):
         return f'https://www.dcard.tw/f/{self.forum.alias}/p/{self.id}'
 
-    def get_post(self, browser: ChromeProcess, min_count: int = 30, timeout: float = 30):
+    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10):
 
         def load_page():
             nonlocal stop
             browser.get(self.url, referrer='https://www.google.com/')
-            time.sleep(3)
+            time.sleep(5)
             while not stop:
                 browser.cdp.send('Runtime.evaluate', expression="document.querySelector('div#comment-list-section button:nth-last-child(2)').click()")
                 browser.scroll(
@@ -161,16 +217,18 @@ class Post:
                     if r['method'] == 'Network.responseReceived':
                         if self.url in r['params']['response']['url']:
                             time.sleep(0.5)
-                            response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'],
-                                                     features="html.parser")
+                            response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features="html.parser")
                             response = json.loads(response.find('script', type="application/ld+json").text)
                             self.title = response['headline']
                             self.content = response['text']
-                            self.created_at = dateutil.parser.parse(response['datePublished'])
-                            self.updated_at = dateutil.parser.parse(response['dateModified'])
-                            self.persona_nickname = response['author']['name']
-                            self.persona_uid = response['author']['identifier']
-                            self.gender = response['author']['gender']
+                            self.created_time = dateutil.parser.parse(response['datePublished'])
+                            self.modified_time = dateutil.parser.parse(response['dateModified'])
+                            self.author = User()
+                            self.author.school = response['author']['name'] if 'name' in response['author'] else None
+                            self.author.department = response['author']['identifier'] if 'identifier' in response['author'] else None
+                            self.author.nickname = response['author']['name'] if 'name' in response['author'] else None
+                            self.author.id = response['author']['identifier'] if 'identifier' in response['author'] else None
+                            self.author.gender = response['author']['gender'] if 'gender' in response['author'] else None
                             self.like_count = response['interactionStatistic'][0]['userInteractionCount']
                             self.comment_count = response['interactionStatistic'][1]['userInteractionCount']
                             self.share_count = response['interactionStatistic'][2]['userInteractionCount']
@@ -179,18 +237,23 @@ class Post:
                             self.title = response['title']
                             self.excerpt = response['excerpt']
                             self.content = response['content']
-                            self.created_at = dateutil.parser.parse(response['createdAt'])
-                            self.updated_at = dateutil.parser.parse(response['updatedAt'])
+                            self.created_time = dateutil.parser.parse(response['createdAt'])
+                            self.modified_time = dateutil.parser.parse(response['updatedAt'])
                             self.anonymous_school = response['anonymousSchool']
                             self.anonymous_department = response['anonymousDepartment']
-                            if 'school' in response: self.school = response['school']
-                            if 'department' in response: self.department = response['department']
                             self.with_nickname = response['withNickname']
-                            self.persona_nickname = response['personaNickname']
-                            self.persona_uid = response['personaUid']
-                            self.gender = response['gender']
-                            self.is_suspicious_account = response['isSuspiciousAccount']
-                            self.is_moderator = response['isModerator']
+                            self.author = User()
+                            self.author.school = response['school'] if 'school' in response else None
+                            self.author.department = response['department'] if 'department' in response else None
+                            self.author.nickname = response['personaNickname'] if 'personaNickname' in response else None
+                            self.author.id = response['personaUid'] if 'personaUid' in response else None
+                            self.author.gender = response['gender'] if 'gender' in c else None
+                            self.author.is_suspicious_account = response['isSuspiciousAccount']
+                            self.author.is_moderator = response['isModerator']
+                            self.author.verified_badge = response['verifiedBadge']
+                            self.author.member_type = response['memberType']
+                            self.author.creator_badge = response['creatorBadge'] if 'creatorBadge' in response else None
+                            self.author.official_creatorBadge = response['officialCreatorBadge'] if 'officialCreatorBadge' in response else None
                             self.like_count = response['likeCount']
                             self.reactions = response['reactions']
                             self.comment_count = response['commentCount']
@@ -232,29 +295,30 @@ class Post:
                             self.excerpt_comments = response['excerptComments']
                             self.in_review = response['inReview']
                             self.activity_avatar = response['activityAvatar']
-                            self.verified_badge = response['verifiedBadge']
-                            self.member_type = response['memberType']
-                            if 'creatorBadge' in response: self.creator_badge = response['creatorBadge']
-                            if 'officialCreatorBadge' in response: self.official_creatorBadge = response['officialCreatorBadge']
                         elif f'https://www.dcard.tw/service/api/v3/posts/{self.id}/comments?sort=oldest' in r['params']['response']['url']:
                             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                             for c in response['items']:
                                 comment = Comment(self.forum, self, c['floor'])
                                 comment.id = c['id']
-                                if 'content' in c: comment.content = c['content']
-                                comment.created_at = dateutil.parser.parse(c['createdAt'])
-                                comment.updated_at = dateutil.parser.parse(c['updatedAt'])
-                                if 'anonymous' in c: comment.anonymous = c['anonymous']
-                                if 'school' in c: comment.school = c['school']
-                                if 'department' in c: comment.department = c['department']
+                                comment.content = c['content'] if 'content' in c else None
+                                comment.created_time = dateutil.parser.parse(c['createdAt'])
+                                comment.modified_time = dateutil.parser.parse(c['updatedAt'])
+                                comment.anonymous = c['anonymous'] if 'anonymous' in c else None
                                 comment.with_nickname = c['withNickname']
-                                if 'persona_nickname' in c: comment.persona_nickname = c['personaNickname']
-                                if 'persona_uid' in c: comment.persona_uid = c['personaUid']
-                                if 'gender' in c: comment.gender = c['gender']
-                                comment.is_suspicious_account = c['isSuspiciousAccount']
-                                comment.is_moderator = c['isModerator']
-                                if 'likeCount' in c: comment.like_count = c['likeCount']
-                                if 'subCommentCount' in c: comment.subcomment_count = c['subCommentCount']
+                                comment.author = User()
+                                comment.author.school = c['school'] if 'school' in c else None
+                                comment.author.department = c['department'] if 'department' in c else None
+                                comment.author.nickname = c['personaNickname'] if 'personaNickname' in c else None
+                                comment.author.id = c['personaUid'] if 'personaUid' in c else None
+                                comment.author.gender = c['gender'] if 'gender' in c else None
+                                comment.author.is_suspicious_account = c['isSuspiciousAccount']
+                                comment.author.is_moderator = c['isModerator']
+                                comment.author.verified_badge = c['verifiedBadge']
+                                comment.author.member_type = c['memberType']
+                                comment.author.creator_badge = c['creatorBadge'] if 'creatorBadge' in c else None
+                                comment.author.official_creator_badge = c['officialCreatorBadge'] if 'officialCreatorBadge' in c else None
+                                comment.like_count = c['likeCount'] if 'likeCount' in c else None
+                                comment.subcomment_count = c['subCommentCount'] if 'subCommentCount' in c else None
                                 comment.hidden_by_author = c['hiddenByAuthor']
                                 comment.pinned = c['pinned']
                                 comment.host = c['host']
@@ -270,14 +334,10 @@ class Post:
                                 comment.doorplate = c['doorplate']
                                 comment.with_badge = c['withBadge']
                                 comment.is_throttled = c['isThrottled']
-                                if 'identityIdV3' in c: comment.identity_idV3 = c['identityIdV3']
+                                comment.identity_idV3 = c['identityIdV3'] if 'identityIdV3' in c else None
                                 comment.edited = c['edited']
                                 comment.post_avatar = c['postAvatar']
                                 comment.activity_avatar = c['activityAvatar']
-                                comment.verified_badge = c['verifiedBadge']
-                                comment.member_type = c['memberType']
-                                if 'creatorBadge' in c: comment.creator_badge = c['creatorBadge']
-                                if 'officialCreatorBadge' in c: comment.official_creator_badge = c['officialCreatorBadge']
                                 self.comments.append(comment)
 
         stop = False
@@ -302,12 +362,6 @@ class Post:
             if length == len(browser.cdp.received): break
             else: length = len(browser.cdp.received)
 
-    def export(self, attributes: list[str], comment_attributes: list[str]):
-        data = {a: getattr(self, a, None) for a in attributes}
-        if 'comments' in attributes:
-            data.update({'comments': {comment.id: {a: getattr(comment, a, None) for a in comment_attributes} for comment in self.comments}})
-        return json.dumps(data, ensure_ascii=False)
-
 
 class Comment:
 
@@ -318,3 +372,9 @@ class Comment:
 
     def __repr__(self):
         return f'<Dcard comment: {self.forum.alias}:{self.post.id}:b{self.floor}>'
+
+
+class User:
+
+    def __init__(self):
+        pass

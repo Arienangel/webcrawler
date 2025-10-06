@@ -13,17 +13,19 @@ from selenium import webdriver
 
 class ChromeDriver(webdriver.Chrome):
 
-    def __init__(self,
-                 chromedriver_path: str = 'chromedriver',
-                 user_data_dir: str = None,
-                 profile_directory: str = None,
-                 headless: bool = False,
-                 window_size: list = [1280, 720],
-                 remote_debugging_host: str = '127.0.0.1',
-                 remote_debugging_port: int = 9222,
-                 service_kwargs: dict = {},
-                 chrome_options: list = [],
-                 experimental_options: dict = {}):
+    def __init__(
+        self,
+        chromedriver_path: str = 'chromedriver',
+        user_data_dir: str = None,
+        profile_directory: str = None,
+        headless: bool = False,
+        window_size: list = [1280, 720],
+        remote_debugging_host: str = '127.0.0.1',
+        remote_debugging_port: int = 9222,
+        service_kwargs: dict = {},
+        chrome_options: list = [],
+        experimental_options: dict = {},
+    ):
         self.window_size = window_size
         self.service = webdriver.ChromeService(executable_path=chromedriver_path, **service_kwargs)
         self.options = webdriver.ChromeOptions()
@@ -68,16 +70,20 @@ class ChromeDriver(webdriver.Chrome):
 # https://chromedevtools.github.io/devtools-protocol
 class ChromeProcess:
 
-    def __init__(self,
-                 chrome_path: str = 'chrome',
-                 user_data_dir: str = None,
-                 profile_directory: str = None,
-                 incognito: bool = True,
-                 headless: bool = False,
-                 window_size: list = [1280, 720],
-                 remote_debugging_host: str = '127.0.0.1',
-                 remote_debugging_port: int = 9222,
-                 chrome_options: list = []):
+    def __init__(
+        self,
+        chrome_path: str = 'chrome',
+        user_data_dir: str = None,
+        profile_directory: str = None,
+        incognito: bool = True,
+        headless: bool = False,
+        window_size: list = [1280, 720],
+        remote_debugging_host: str = '127.0.0.1',
+        remote_debugging_port: int = 9222,
+        chrome_options: list = [],
+        use_exist: bool = False,
+    ):
+        self.use_exist = use_exist
         self.window_size = window_size
         self.options = [chrome_path, '--disable-popup-blocking', f'--window-size={self.window_size[0]},{self.window_size[1]}']
         if incognito:
@@ -93,7 +99,8 @@ class ChromeProcess:
             self.options.append(f'--profile-directory={profile_directory}')
         for option in chrome_options:
             self.options.append(option)
-        self.process = subprocess.Popen(args=self.options, start_new_session=True)
+        if not self.use_exist:
+            self.process = subprocess.Popen(args=self.options, start_new_session=True)
         if remote_debugging_port:
             self.cdp = CDP(remote_debugging_host=remote_debugging_host, remote_debugging_port=remote_debugging_port)
             self.cdp.send('Network.enable')
@@ -115,8 +122,9 @@ class ChromeProcess:
     def stop(self):
         if hasattr(self, 'cdp'):
             self.cdp.stop()
-        if self.process.poll() is None:
-            self.process.terminate()
+        if not self.use_exist:
+            if self.process.poll() is None:
+                self.process.terminate()
 
 
 class CDP:
@@ -132,6 +140,13 @@ class CDP:
         self._recv_thread = threading.Thread(target=self._recv)
         self._recv_thread.start()
         atexit.register(self.stop)
+
+    def get(self, url: str, **params):
+        self.send('Page.navigate', url=url, **params)
+
+    def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25):
+        self.send('Input.synthesizeScrollGesture', x=x, y=y, xDistance=x_distance, yDistance=y_distance, speed=speed, repeatCount=count - 1, repeatDelayMs=int(repeat_delay * 1000))
+        time.sleep(max(abs(x_distance), abs(y_distance)) / speed * count + repeat_delay * (count - 1))
 
     def send(self, method: str, **params):
         id = self._get_id()

@@ -1,5 +1,4 @@
 import datetime
-import json
 import queue
 import threading
 import time
@@ -33,16 +32,16 @@ class Search:
     def url(self):
         return f'https://www.plurk.com/search?q={self.query}'
 
-    def get_posts(self, session: requests.Session, min_count: int = 30, time_until: datetime.datetime = None, timeout: float = 10):
+    def get(self, session: requests.Session, min_count: int = 30, time_until: datetime.datetime = None, timeout: float = 35):
 
         def load_page():
             while not stop:
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
                 if response.headers['Content-Type'] != 'application/json':
-                    time.sleep(2)
+                    time.sleep(16)
                     continue
                 response_queue.put(response.json())
-                time.sleep(2)
+                time.sleep(16)
                 try:
                     self.api_body.update({'after_id': next_id.get(timeout=timeout)})
                 except queue.ShutDown:
@@ -53,44 +52,46 @@ class Search:
             while not stop:
                 if len(response_queue.queue):
                     response = response_queue.get()
-                    for u in response['users'].values():
-                        user = User(u['id'])
-                        user.nickname = u['nick_name']
-                        user.display_name = u['display_name']
-                        user.avatar = u['avatar']
-                        user.premium = u['premium']
-                        if u['date_of_birth']:
-                            user.brithday = dateutil.parser.parse(u['date_of_birth'])
-                        user.status = u['status']
-                        user.name_color = u['name_color']
-                        user.brithday_privacy = u['bday_privacy']
-                        user.has_profile_image = u['has_profile_image']
-                        user.timeline_privacy = u['timeline_privacy']
-                        user.gender = u['gender']
-                        user.karma = u['karma']
-                        user.verified_account = u['verified_account']
-                        user.dateformat = u['dateformat']
-                        user.default_lang = u['default_lang']
-                        user.friend_list_privacy = u['friend_list_privacy']
-                        user.show_location = u['show_location']
-                        user.full_name = u['full_name']
-                        user.relationship = u['relationship']
-                        user.location = u['location']
-                        user.timezone = u['timezone']
-                        user.email_confirmed = u['email_confirmed']
-                        user.phone_verified = u['phone_verified']
-                        user.pinned_plurk_id = u['pinned_plurk_id']
-                        user.background_id = u['background_id']
-                        user.recruited = u['recruited']
-                        user.show_ads = u['show_ads']
-                        self.users.update({user.id: user})
+                    if response['users']:
+                        for u in response['users'].values():
+                            user = User(u['id'])
+                            user.nickname = u['nick_name']
+                            user.display_name = u['display_name']
+                            user.avatar = u['avatar']
+                            user.premium = u['premium']
+                            if u['date_of_birth']:
+                                user.brithday = dateutil.parser.parse(u['date_of_birth'])
+                            user.status = u['status']
+                            user.name_color = u['name_color']
+                            user.brithday_privacy = u['bday_privacy']
+                            user.has_profile_image = u['has_profile_image']
+                            user.timeline_privacy = u['timeline_privacy']
+                            user.gender = u['gender']
+                            user.karma = u['karma']
+                            user.verified_account = u['verified_account']
+                            user.dateformat = u['dateformat']
+                            user.default_lang = u['default_lang']
+                            user.friend_list_privacy = u['friend_list_privacy']
+                            user.show_location = u['show_location']
+                            user.full_name = u['full_name']
+                            user.relationship = u['relationship']
+                            user.location = u['location']
+                            user.timezone = u['timezone']
+                            user.email_confirmed = u['email_confirmed']
+                            user.phone_verified = u['phone_verified']
+                            user.pinned_plurk_id = u['pinned_plurk_id']
+                            user.background_id = u['background_id']
+                            user.recruited = u['recruited']
+                            user.show_ads = u['show_ads']
+                            self.users.update({user.id: user})
                     for p in response['plurks']:
                         if len(self.posts):
                             if p['id'] == self.posts[-1].id:
                                 stop = True
                                 return
                         post = Post(p['id'])
-                        post.user = self.users[p['user_id']]
+                        post.query=self.query
+                        post.author = self.users[p['user_id']]
                         post.qualifier = p['qualifier']
                         post.content = p['content']
                         post.content_raw = p['content_raw']
@@ -102,9 +103,9 @@ class Search:
                         post.no_comments = p['no_comments']
                         post.plurk_type = p['plurk_type']
                         post.is_unread = p['is_unread']
-                        post.created_at = dateutil.parser.parse(p['posted'])
+                        post.created_time = dateutil.parser.parse(p['posted'])
                         if p['last_edited']:
-                            post.edited_at = dateutil.parser.parse(p['last_edited'])
+                            post.modified_time = dateutil.parser.parse(p['last_edited'])
                         post.coins = p['coins']
                         post.has_gift = p['has_gift']
                         post.porn = p['porn']
@@ -137,7 +138,7 @@ class Search:
             while time.time() < end_time:
                 if all([
                         True if min_count is None else True if len(self.posts) >= min_count else False,
-                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_at <= time_until else False,
+                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time <= time_until else False,
                 ]):
                     return
                 if stop:
@@ -145,12 +146,6 @@ class Search:
         finally:
             stop = True
             next_id.shutdown(immediate=True)
-
-    def export(self, attributes: list[str], post_attributes: list[str]):
-        data = {a: getattr(self, a, None) for a in attributes}
-        if 'posts' in attributes:
-            data.update({'posts': {post.id: {a: getattr(post, a, None) for a in post_attributes} for post in self.posts}})
-        return json.dumps(data, ensure_ascii=False)
 
 
 class Post:
@@ -174,16 +169,16 @@ class Post:
     def url(self):
         return f'https://www.plurk.com/p/{self.b36}'
 
-    def get_comments(self, session: requests.Session, min_count: int = 30, timeout: float = 10):
+    def get(self, session: requests.Session, min_count: int = 30, timeout: float = 35):
 
         def load_page():
             while not stop:
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
                 if response.headers['Content-Type'] != 'application/json':
-                    time.sleep(2)
+                    time.sleep(16)
                     continue
                 response_queue.put(response.json())
-                time.sleep(2)
+                time.sleep(16)
                 try:
                     self.api_body.update({'from_response_id': next_id.get(timeout=timeout)})
                 except queue.ShutDown:
@@ -195,27 +190,28 @@ class Post:
             while not stop:
                 if len(response_queue.queue):
                     response = response_queue.get()
-                    for u in response['users'].values():
-                        user = User(u['id'])
-                        user.nickname = u['nick_name']
-                        user.display_name = u['display_name']
-                        user.avatar = u['avatar']
-                        user.premium = u['premium']
-                        if u['date_of_birth']:
-                            user.brithday = dateutil.parser.parse(u['date_of_birth'])
-                        user.status = u['status']
-                        user.name_color = u['name_color']
-                        user.brithday_privacy = u['bday_privacy']
-                        user.has_profile_image = u['has_profile_image']
-                        user.timeline_privacy = u['timeline_privacy']
-                        user.gender = u['gender']
-                        user.karma = u['karma']
-                        user.verified_account = u['verified_account']
-                        user.dateformat = u['dateformat']
-                        user.default_lang = u['default_lang']
-                        user.friend_list_privacy = u['friend_list_privacy']
-                        user.show_location = u['show_location']
-                        self.users.update({user.id: user})
+                    if response['users']:
+                        for u in response['users'].values():
+                            user = User(u['id'])
+                            user.nickname = u['nick_name']
+                            user.display_name = u['display_name']
+                            user.avatar = u['avatar']
+                            user.premium = u['premium']
+                            if u['date_of_birth']:
+                                user.brithday = dateutil.parser.parse(u['date_of_birth'])
+                            user.status = u['status']
+                            user.name_color = u['name_color']
+                            user.brithday_privacy = u['bday_privacy']
+                            user.has_profile_image = u['has_profile_image']
+                            user.timeline_privacy = u['timeline_privacy']
+                            user.gender = u['gender']
+                            user.karma = u['karma']
+                            user.verified_account = u['verified_account']
+                            user.dateformat = u['dateformat']
+                            user.default_lang = u['default_lang']
+                            user.friend_list_privacy = u['friend_list_privacy']
+                            user.show_location = u['show_location']
+                            self.users.update({user.id: user})
                     for c in response['responses']:
                         if len(self.comments):
                             if c['id'] == self.comments[-1].id:
@@ -224,26 +220,29 @@ class Post:
                         comment = Comment(self, c['id'], floor)
                         if len(response['users']) == 0:
                             if c['handle'] in self.users:
-                                comment.user = self.users[c['handle']]
+                                comment.author = self.users[c['handle']]
                             else:
-                                comment.user = User(99999)
-                                comment.user.handle = c['handle']
-                                self.users.update({comment.user.handle: comment.user})
+                                comment.author = User(99999)
+                                comment.author.handle = c['handle']
+                                self.users.update({comment.author.handle: comment.author})
                         else:
-                            comment.user = self.users[c['user_id']]
+                            comment.author = self.users[c['user_id']]
                         comment.content = c['content']
                         comment.content_raw = c['content_raw']
                         comment.qualifier = c['qualifier']
-                        comment.created_at = dateutil.parser.parse(c['posted'])
+                        comment.created_time = dateutil.parser.parse(c['posted'])
                         if c['last_edited']:
-                            comment.edited_at = dateutil.parser.parse(c['last_edited'])
+                            comment.modified_time = dateutil.parser.parse(c['last_edited'])
                         comment.lang = c['lang']
                         comment.coins = c['coins']
                         comment.editability = c['editability']
                         self.comments.append(comment)
                         floor += 1
                     try:
-                        next_id.put(self.comments[-1].id)
+                        if len(self.comments):
+                            next_id.put(self.comments[-1].id)
+                        else:
+                            return
                     except queue.ShutDown:
                         return
 
@@ -264,12 +263,6 @@ class Post:
         finally:
             stop = True
             next_id.shutdown(immediate=True)
-
-    def export(self, attributes: list[str], comment_attributes: list[str]):
-        data = {a: getattr(self, a, None) for a in attributes}
-        if 'comments' in attributes:
-            data.update({'comments': {comment.id: {a: getattr(comment, a, None) for a in comment_attributes} for comment in self.comments}})
-        return json.dumps(data, ensure_ascii=False)
 
 
 class Comment:

@@ -1,0 +1,98 @@
+webdriver:
+  chromedriver:
+    chromedriver_path: "chromedriver"
+    user_data_dir:
+    profile_directory:
+    headless: false
+    window_size: [1280, 720]
+    remote_debugging_host: "127.0.0.1"
+    remote_debugging_port:
+    service_kwargs:
+    chrome_options: []
+    experimental_options:
+  chromeprocess:
+    chrome_path: "chrome"
+    user_data_dir:
+    profile_directory:
+    incognito: true
+    headless: false
+    window_size: [1280, 720]
+    remote_debugging_host: "127.0.0.1"
+    remote_debugging_port:
+    chrome_options: []
+
+webcrawler:
+  dcard:
+    enable: true
+    do_forum_get: true
+    do_post_get: true
+    forums:
+      - "trans"
+    forum_get:
+      min_count: 20
+      time_until:
+      timeout: 30
+    post_get:
+      min_count: 20
+      timeout: 10
+    db:
+      posts: "data/dcard-posts.db"
+      comments: "data/dcard-comments.db"
+    webdriver:
+      chromeprocess:
+        remote_debugging_port: 9222
+        user_data_dir: "webcrawler/dcard_crawler"
+  facebook:
+    enable: true
+    do_page_get: true
+    do_post_get: true
+    pages:
+      - "tapcpr"
+      - "TaiwanHotline"
+    page_get:
+      min_count: 5
+      time_until:
+      timeout: 30
+    post_get:
+      min_count: 10
+      timeout: 10
+    db:
+      posts: "data/facebook-posts.db"
+      comments: "data/facebook-comments.db"
+    webdriver:
+      chromeprocess:
+        remote_debugging_port: 9223
+        user_data_dir: "webcrawler/facebook_crawler"
+  plurk:
+    enable: true
+    do_search_get: true
+    do_post_get: false
+    searches:
+      - "跨性"
+      - "跨跨"
+      - "免術"
+    search_get:
+      min_count: 30
+      time_until:
+      timeout: 35
+    post_get:
+      min_count: 30
+      timeout: 35
+    db:
+      posts: "data/plurk-posts.db"
+      comments: "data/plurk-comments.db"
+  ptt:
+    enable: true
+    do_forum_get: true
+    do_post_get: true
+    forums:
+      - "transgender"
+    forum_get:
+      min_count: 20
+      timeout: 30
+      start_page:
+    post_get:
+      timeout: 10
+    db:
+      posts: "data/ptt-posts.db"
+      comments: "data/ptt-comments.db"
