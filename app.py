@@ -60,12 +60,14 @@ class dcard_crawler:
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
+                            self.queue_posts.put([post])
                             self.queue_comments.put(post.comments)
                             time.sleep(8)
                         except Exception as E:
                             self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
-                self.queue_posts.put(forum.posts)
+                else:
+                    self.queue_posts.put(forum.posts[::-1])
         finally:
             self.stop = True
 
@@ -145,12 +147,14 @@ class facebook_crawler:
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
+                            self.queue_posts.put([post])
                             self.queue_comments.put(post.comments)
                             time.sleep(5)
                         except Exception as E:
                             self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
-                self.queue_posts.put(page.posts)
+                else:
+                    self.queue_posts.put(page.posts[::-1])
         finally:
             self.stop = True
 
@@ -230,12 +234,14 @@ class plurk_crawler:
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
+                            self.queue_posts.put([post])
                             self.queue_comments.put(post.comments)
                             time.sleep(16)
                         except Exception as E:
                             self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
-                self.queue_posts.put(search.posts)
+                else:
+                    self.queue_posts.put(search.posts[::-1])
         finally:
             self.stop = True
 
@@ -315,12 +321,14 @@ class ptt_crawler:
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
+                            self.queue_posts.put([post])
                             self.queue_comments.put(post.comments)
                             time.sleep(5)
                         except Exception as E:
                             self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
-                self.queue_posts.put(forum.posts)
+                else:
+                    self.queue_posts.put(forum.posts[::-1])
         finally:
             self.stop = True
 

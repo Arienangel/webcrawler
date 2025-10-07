@@ -212,7 +212,7 @@ class CDP:
         q = queue.Queue()
         q.name = name
         self._listeners.update({q: listener})
-        self._logger.info(f'Add network listener: {q.name}')
+        self._logger.debug(f'Add network listener: {q.name}')
         return q
 
     def _recv(self):
