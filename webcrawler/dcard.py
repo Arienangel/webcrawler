@@ -184,6 +184,7 @@ class Forum:
             stop = True
             listener1.shutdown()
             listener2.shutdown()
+            self._logger.debug(f'#Posts: {len(self.posts)}')
 
 
 class Post:
@@ -375,6 +376,7 @@ class Post:
             listener1.shutdown()
             listener2.shutdown()
             listener3.shutdown()
+            self._logger.debug(f'#Comments: {len(self.comments)}')
 
 
 class Comment:

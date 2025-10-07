@@ -101,6 +101,7 @@ class Page:
             stop = True
             listener1.shutdown()
             listener2.shutdown()
+            self._logger.debug(f'#Posts: {len(self.posts)}')
 
 
 class Post:
@@ -260,6 +261,7 @@ class Post:
         finally:
             stop = True
             listener1.shutdown()
+            self._logger.debug(f'#Comments: {len(self.comments)}')
 
 
 class Comment:

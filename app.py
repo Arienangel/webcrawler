@@ -320,6 +320,7 @@ if __name__ == '__main__':
         level=config['logging']['level'] or args.log_level,
     )
     logger = logging.getLogger('App')
+    logger.info(f'Config file: {args.f}')
     jobs = []
     if config['webcrawler']['dcard']['enable']:
         chromeprocess_kwargs = config['webdriver']['chromeprocess']
