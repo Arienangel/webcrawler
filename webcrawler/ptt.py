@@ -41,11 +41,20 @@ class Forum:
                         post.title = p.select('div.title a')[0].text
                         post.content = None
                         reaction_count = p.select('div.nrec')[0].text
-                        post.reaction_count = int(reaction_count) if reaction_count else 0
+                        if reaction_count:
+                            if reaction_count == '爆':
+                                reaction_count = 100
+                            elif reaction_count == 'XX':
+                                reaction_count = -10
+                            elif 'X' in reaction_count:
+                                reaction_count = reaction_count.replace('X', '-')
+                        else:
+                            reaction_count = 0
+                        post.reaction_count = int(reaction_count)
                         posts.append(post)
-                        self._logger.info(f'Get post: {post.__repr__()}')
+                        self._logger.debug(f'Extract post: {post.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Get post failed: {type(E)}:{E.args()}: {p}')
+                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args()}: {p}')
                     continue
             self.posts.extend(posts[::-1])
             next_url = response.select('div#action-bar-container > div.action-bar > div.btn-group-paging')[0].find('a', string='‹ 上頁').get('href')
@@ -96,9 +105,9 @@ class Post:
                 comment.time = dateutil.parser.parse(f'{year}/{time}')
                 month = comment.time.year
                 self.comments.append(comment)
-                self._logger.info(f'Get comment: {comment.__repr__()}')
+                self._logger.debug(f'Extract comment: {comment.__repr__()}')
             except Exception as E:
-                self._logger.warning(f'Get comment failed: {type(E)}:{E.args()}: {c}')
+                self._logger.warning(f'Extract comment failed: {type(E)}:{E.args()}: {c}')
                 continue
 
 

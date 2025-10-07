@@ -79,9 +79,9 @@ class Page:
                         else:
                             post.attachments = []
                         self.posts.append(post)
-                        self._logger.info(f'Get post: {post.__repr__()}')
+                        self._logger.debug(f'Extract post: {post.__repr__()}')
                     except Exception as E:
-                        self._logger.warning(f'Get post failed: {type(E)}:{E.args()}: {p}')
+                        self._logger.warning(f'Extract post failed: {type(E)}:{E.args()}: {p}')
                         continue
 
         stop = False
@@ -241,9 +241,9 @@ class Post:
                             comment.comment_upper_badge_renderer = c['node']['comment_upper_badge_renderer']
                             comment.elevated_comment_data = c['node']['elevated_comment_data']
                             self.comments.append(comment)
-                            self._logger.info(f'Get comment: {comment.__repr__()}')
+                            self._logger.debug(f'Extract comment: {comment.__repr__()}')
                         except Exception as E:
-                            self._logger.warning(f'Get comment failed: {type(E)}:{E.args()}: {c}')
+                            self._logger.warning(f'Extract comment failed: {type(E)}:{E.args()}: {c}')
                             continue
 
         stop = False
