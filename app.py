@@ -68,7 +68,7 @@ class dcard_crawler:
                         db.execute(f'INSERT INTO `{post.forum.alias}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.school, post.author.department, post.title, post.content])
                         self._logger.info(f'Write db: {post.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {post.__repr__()}')
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {post.__repr__()}')
                     continue
 
     def write_comments_db(self, comments: list[dcard.Comment], db_path: str):
@@ -81,7 +81,7 @@ class dcard_crawler:
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.created_time.timestamp()), comment.author.school, comment.author.department, comment.content])
                         self._logger.info(f'Write db: {comment.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {comment.__repr__()}')
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {comment.__repr__()}')
                     continue
 
 
@@ -141,7 +141,7 @@ class facebook_crawler:
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.page.id}` VALUES (?,?,?,?,?);', [post.id, post.pfbid, int(post.created_time.timestamp()), post.title, post.content])
                 except Exception as E:
-                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {post.__repr__()}')
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {post.__repr__()}')
                     continue
 
     def write_comments_db(self, comments: list[facebook.Comment], db_path: str):
@@ -154,7 +154,7 @@ class facebook_crawler:
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?);', [comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.alias, comment.author.name, comment.content])
                         self._logger.info(f'Write db: {comment.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {comment.__repr__()}')
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {comment.__repr__()}')
                     continue
 
 
@@ -215,7 +215,7 @@ class plurk_crawler:
                         db.execute(f'INSERT INTO `{post.query}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.id, post.author.nickname, post.author.display_name, post.content_raw])
                         self._logger.info(f'Write db: {post.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {post.__repr__()}')
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {post.__repr__()}')
                     continue
 
     def write_comments_db(self, comments: list[plurk.Comment], db_path: str):
@@ -228,7 +228,7 @@ class plurk_crawler:
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?,?);', [comment.floor, comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.nickname, comment.author.display_name, comment.content])
                         self._logger.info(f'Write db: {comment.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {comment.__repr__()}')
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {comment.__repr__()}')
                     continue
 
 
@@ -289,7 +289,7 @@ class ptt_crawler:
                         db.execute(f'INSERT INTO `{post.forum.name}` VALUES (?,?,?,?,?);', [post.id, int(post.time.timestamp()), post.author, post.title, post.content])
                         self._logger.info(f'Write db: {post.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {post.__repr__()}')
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {post.__repr__()}')
                     continue
 
     def write_comments_db(self, comments: list[plurk.Comment], db_path: str):
@@ -302,7 +302,7 @@ class ptt_crawler:
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.time.timestamp()), comment.reaction, comment.author, comment.content])
                         self._logger.info(f'Write db: {comment.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {comment.__repr__()}')
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {comment.__repr__()}')
                     continue
 
 
