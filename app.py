@@ -233,7 +233,7 @@ class plurk_crawler:
 
 
 class ptt_crawler:
-    _logger = logging.getLogger('Dcard crawler')
+    _logger = logging.getLogger('PTT crawler')
 
     def __init__(self, browser: requests.Session = None, do_forum_get: bool = True, do_post_get: bool = True):
         self._stop_browser_atexit = False if browser else True
@@ -283,23 +283,23 @@ class ptt_crawler:
         with sqlite3.connect(db_path) as db:
             for post in posts:
                 try:
-                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.forum.name}` ("id" TEXT UNIQUE, "time" INTEGAR, "author" TEXT, "title" TEXT, "content" TEXT);')
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.forum.name}` ("id" TEXT UNIQUE, "time" INTEGAR, "author_id" TEXT, "author_name" TEXT, "title" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT id FROM `{post.forum.name}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
-                        db.execute(f'INSERT INTO `{post.forum.name}` VALUES (?,?,?,?,?);', [post.id, int(post.time.timestamp()), post.author, post.title, post.content])
+                        db.execute(f'INSERT INTO `{post.forum.name}` VALUES (?,?,?,?,?,?);', [post.id, int(post.time.timestamp()), post.author.id, post.author.name, post.title, post.content])
                         self._logger.info(f'Write db: {post.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {post.__repr__()}')
                     continue
 
-    def write_comments_db(self, comments: list[plurk.Comment], db_path: str):
+    def write_comments_db(self, comments: list[ptt.Comment], db_path: str):
         with sqlite3.connect(db_path) as db:
             for comment in comments:
                 try:
-                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "time" INTEGAR, "reaction" TEXT, "author" TEXT, "content" TEXT);')
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "time" INTEGAR, "reaction" TEXT, "author_id" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
-                        db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.time.timestamp()), comment.reaction, comment.author, comment.content])
+                        db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.time.timestamp()), comment.reaction, comment.author.id, comment.content])
                         self._logger.info(f'Write db: {comment.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {comment.__repr__()}')

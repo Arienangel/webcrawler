@@ -13,7 +13,7 @@ from .webdriver import ChromeProcess
 
 class Forum:
 
-    def __init__(self, alias: str):
+    def __init__(self, alias: str=None):
         self.alias: str = alias
         self.posts: list[Post] = []
         self._logger = logging.getLogger(self.__repr__())
@@ -30,7 +30,7 @@ class Forum:
         def load_page():
             browser.get(self.url, referrer='https://www.google.com/')
             self._logger.info(f'Get: {self.url}')
-            time.sleep(5)
+            time.sleep(8)
             while not stop:
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
@@ -106,7 +106,6 @@ class Forum:
                                 post.anonymous_school = p['anonymousSchool']
                                 post.anonymous_department = p['anonymousDepartment']
                                 post.with_nickname = p['withNickname']
-                                post.author = User()
                                 post.author.school = p['school'] if 'school' in p else None
                                 post.author.department = p['department'] if 'department' in p else None
                                 post.author.nickname = p['personaNickname'] if 'personaNickname' in p else None
@@ -189,9 +188,13 @@ class Forum:
 
 class Post:
 
-    def __init__(self, forum: Forum, id: int):
+    def __init__(self, forum: Forum=None, id: int=None):
         self.forum: Forum = forum
         self.id: int = id
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.author: User = User()
+        self.title: str = None
+        self.content: str = None
         self.comments: list[Comment] = []
         self._logger = logging.getLogger(self.__repr__())
 
@@ -208,7 +211,7 @@ class Post:
             nonlocal stop
             browser.get(self.url)
             self._logger.info(f'Get: {self.url}')
-            time.sleep(5)
+            time.sleep(8)
             while not stop:
                 browser.cdp.send('Runtime.evaluate', expression="document.querySelector('div#comment-list-section button:nth-last-child(2)').click()")
                 browser.scroll(
@@ -232,7 +235,6 @@ class Post:
                     self.content = response['text']
                     self.created_time = dateutil.parser.parse(response['datePublished'])
                     self.modified_time = dateutil.parser.parse(response['dateModified'])
-                    self.author = User()
                     self.author.school = response['author']['name'] if 'name' in response['author'] else None
                     self.author.department = response['author']['identifier'] if 'identifier' in response['author'] else None
                     self.author.nickname = response['author']['name'] if 'name' in response['author'] else None
@@ -252,7 +254,6 @@ class Post:
                     self.anonymous_school = response['anonymousSchool']
                     self.anonymous_department = response['anonymousDepartment']
                     self.with_nickname = response['withNickname']
-                    self.author = User()
                     self.author.school = response['school'] if 'school' in response else None
                     self.author.department = response['department'] if 'department' in response else None
                     self.author.nickname = response['personaNickname'] if 'personaNickname' in response else None
@@ -317,7 +318,6 @@ class Post:
                             comment.modified_time = dateutil.parser.parse(c['updatedAt'])
                             comment.anonymous = c['anonymous'] if 'anonymous' in c else None
                             comment.with_nickname = c['withNickname']
-                            comment.author = User()
                             comment.author.school = c['school'] if 'school' in c else None
                             comment.author.department = c['department'] if 'department' in c else None
                             comment.author.nickname = c['personaNickname'] if 'personaNickname' in c else None
@@ -381,10 +381,13 @@ class Post:
 
 class Comment:
 
-    def __init__(self, forum: Forum, post: Post, floor: int):
+    def __init__(self, forum: Forum=None, post: Post=None, floor: int=None):
         self.forum: Forum = forum
         self.post: Post = post
         self.floor: int = floor
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.author: User = User()
+        self.content: str = None
         self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
@@ -393,5 +396,12 @@ class Comment:
 
 class User:
 
-    def __init__(self):
-        pass
+    def __init__(self, school: str = None, department: str = None, nickname: str = None, id: str = None, gender: str = None):
+        self.school: str = school
+        self.department: str = department
+        self.nickname: str = nickname
+        self.id: str = id
+        self.gender: str = gender
+
+    def __repr__(self):
+        return f'<Dcard user: {self.school} {self.department}>'.strip()

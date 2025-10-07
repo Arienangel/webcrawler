@@ -19,7 +19,7 @@ def convert_to_b36(id: int):
 
 class Search:
 
-    def __init__(self, query: str):
+    def __init__(self, query: str = None):
         self.query: str = query
         self.api_url: str = 'https://www.plurk.com/Search/search2'
         self.api_body: dict = {"query": query}
@@ -168,6 +168,10 @@ class Post:
         else: self.id: int = convert_to_id(b36)
         self.api_url: str = 'https://www.plurk.com/Responses/get'
         self.api_body: dict = {"plurk_id": self.id, "from_response_id": 0}
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.author: User = User()
+        self.content: str = None
+        self.content_raw: str = None
         self.comments: list[Comment] = []
         self.users: dict[int, User] = {}
         self._logger = logging.getLogger(self.__repr__())
@@ -293,10 +297,14 @@ class Post:
 
 class Comment:
 
-    def __init__(self, post: Post, id: int, floor: int):
+    def __init__(self, post: Post = None, id: int = None, floor: int = None):
         self.post: Post = post
-        self.id: int = id
         self.floor: int = floor
+        self.id: int = id
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.author: User = User()
+        self.content: str = None
+        self.content_raw: str = None
         self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
@@ -305,5 +313,10 @@ class Comment:
 
 class User:
 
-    def __init__(self, id: int):
+    def __init__(self, id: int = None):
         self.id: int = id
+        self.nickname: str = None
+        self.display_name: str = None
+
+    def __repr__(self):
+        return f'<Plurk user: {self.nickname}({self.display_name})>'

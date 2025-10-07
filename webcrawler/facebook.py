@@ -16,7 +16,7 @@ class Page:
     def __init__(self, id: int = None, alias: str = None):
         self.id: int = id if id else None
         self.alias: str = alias if alias else None
-        self.name = None
+        self.name: str = None
         self.posts: list[Post] = []
         self._logger = logging.getLogger(self.__repr__())
 
@@ -106,10 +106,14 @@ class Page:
 
 class Post:
 
-    def __init__(self, page: Page, id: int = None, pfbid: str = None):
+    def __init__(self, page: Page = None, id: int = None, pfbid: str = None):
         self.page: Page = page
+        self.author: Page = page
         self.id: int = id if id else None
         self.pfbid: str = pfbid if pfbid else None
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.title: str = None
+        self.content: str = None
         self.comments: list[Comment] = []
         self._logger = logging.getLogger(self.__repr__())
 
@@ -188,7 +192,7 @@ class Post:
                                 comment.author = self.page
                             else:
                                 if 'pfbid' in c['node']['author']['id']:
-                                    comment.author = Page(None)
+                                    comment.author = Page()
                                     comment.author.pfbid = c['node']['author']['id']
                                 else:
                                     comment.author = Page(int(c['node']['author']['id']))
@@ -266,10 +270,13 @@ class Post:
 
 class Comment:
 
-    def __init__(self, page: Page, post: Post, id: int = None):
+    def __init__(self, page: Page = None, post: Post = None, id: int = None):
         self.page: Page = page
+        self.author: Page = page
         self.post: Post = post
         self.id: int = id
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.content: str = None
         self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):

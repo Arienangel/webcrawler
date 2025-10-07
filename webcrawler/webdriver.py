@@ -252,6 +252,6 @@ class CDP:
     def stop(self):
         self._running = False
         for q in self._listeners.keys():
-            if not q.is_shutdown():
+            if not q.is_shutdown:
                 q.shutdown()
         self.websocket.close()
