@@ -1,3 +1,4 @@
+import datetime
 import logging
 import re
 import time
@@ -9,7 +10,7 @@ from bs4 import BeautifulSoup
 
 class Forum:
 
-    def __init__(self, name: str):
+    def __init__(self, name: str = None):
         self.name: str = name
         self.posts: list[Post] = []
         self._logger = logging.getLogger(self.__repr__())
@@ -37,7 +38,7 @@ class Forum:
                         break
                     elif p.get('class')[0] == 'r-ent':
                         post = Post(self, p.select('div.title a')[0].get('href').rstrip('.html').split('/')[-1])
-                        post.author = p.select('div.author')[0].text
+                        post.author.id = p.select('div.author')[0].text
                         post.title = p.select('div.title a')[0].text
                         post.content = None
                         reaction_count = p.select('div.nrec')[0].text
@@ -69,9 +70,13 @@ class Forum:
 
 class Post:
 
-    def __init__(self, forum: Forum, id: str):
+    def __init__(self, forum: Forum = None, id: str = None):
         self.forum: Forum = forum
         self.id: str = id
+        self.time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.author: User = User()
+        self.title: str = None
+        self.content: str = None
         self.comments: list[Post] = []
         self._logger = logging.getLogger(self.__repr__())
 
@@ -87,7 +92,8 @@ class Post:
         response = BeautifulSoup(session.get(self.url, timeout=timeout).text, features="html.parser")
         self._logger.info(f'Get: {self.url}')
         header = response.select('div#main-content > div.article-metaline')
-        self.author, self.nickname = header[0].select('span.article-meta-value')[0].text.split(' ', maxsplit=1)
+        self.author.id, self.author.name = header[0].select('span.article-meta-value')[0].text.split(' ', maxsplit=1)
+        self.author.name=self.author.name[1:-1]
         self.title = header[1].select('span.article-meta-value')[0].text
         self.time = dateutil.parser.parse(header[2].select('span.article-meta-value')[0].text)
         text = response.select('div#main-content')[0].text
@@ -100,7 +106,7 @@ class Post:
             try:
                 comment = Comment(self.forum, self, floor)
                 comment.reaction = c.select('span.push-tag')[0].text.strip()
-                comment.author = c.select('span.push-userid')[0].text
+                comment.author.id = c.select('span.push-userid')[0].text
                 comment.content = c.select('span.push-content')[0].text.lstrip(': ')
                 time = c.select('span.push-ipdatetime')[0].text.strip()
                 if int(time[:2]) < month: year += 1
@@ -121,7 +127,21 @@ class Comment:
         self.forum: Forum = forum
         self.post: Post = post
         self.floor: int = floor
+        self.time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.author: User = User()
+        self.content: str = None
+        self.reaction: str = None
         self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<PTT comment: {self.forum.name}:{self.post.id}:b{self.floor}>'
+
+
+class User:
+
+    def __init__(self, id: str = None, name: str = None):
+        self.id: str = id
+        self.name: str = name
+
+    def __repr__(self):
+        return f'<PTT user: {self.id}({self.name})>'
