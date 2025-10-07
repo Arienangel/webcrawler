@@ -63,6 +63,8 @@ class Forum:
                 time.sleep(5)
             else:
                 return
+        else:
+            self._logger.debug(f'#Posts: {len(self.posts)}')
 
 
 class Post:
@@ -109,6 +111,8 @@ class Post:
             except Exception as E:
                 self._logger.warning(f'Extract comment failed: {type(E)}:{E.args()}: {c}')
                 continue
+        else:
+            self._logger.debug(f'#Comments: {len(self.comments)}')
 
 
 class Comment:

@@ -158,6 +158,7 @@ class Search:
         finally:
             stop = True
             next_id.shutdown(immediate=True)
+            self._logger.debug(f'#Posts: {len(self.posts)}')
 
 
 class Post:
@@ -172,7 +173,7 @@ class Post:
         self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
-        return f'<Plurk post: {self.id} ({self.b36})>'
+        return f'<Plurk post: {self.id}({self.b36})>'
 
     @property
     def b36(self):
@@ -287,6 +288,7 @@ class Post:
         finally:
             stop = True
             next_id.shutdown(immediate=True)
+            self._logger.debug(f'#Comments: {len(self.comments)}')
 
 
 class Comment:
@@ -298,7 +300,7 @@ class Comment:
         self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
-        return f'<Plurk comment: {self.post.id} ({self.post.b36}):b{self.floor}>'
+        return f'<Plurk comment: {self.post.id}({self.post.b36}):b{self.floor}>'
 
 
 class User:
