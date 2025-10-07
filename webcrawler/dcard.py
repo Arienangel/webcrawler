@@ -1,11 +1,12 @@
 import datetime
 import json
+import logging
 import random
 import threading
 import time
 
-from bs4 import BeautifulSoup
 import dateutil
+from bs4 import BeautifulSoup
 
 from .webdriver import ChromeProcess
 
@@ -15,6 +16,7 @@ class Forum:
     def __init__(self, alias: str):
         self.alias: str = alias
         self.posts: list[Post] = []
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<Dcard forum: {self.alias}>'
@@ -27,6 +29,7 @@ class Forum:
 
         def load_page():
             browser.get(self.url, referrer='https://www.google.com/')
+            self._logger.info(f'Get: {self.url}')
             time.sleep(5)
             while not stop:
                 browser.scroll(
@@ -157,12 +160,14 @@ class Forum:
                                 post.in_review = p['inReview']
                                 post.activity_avatar = p['activityAvatar']
                                 self.posts.append(post)
-                            except:
+                                self._logger.info(f'Get post: {post.__repr__()}')
+                            except Exception as E:
+                                self._logger.warning(f'Get post failed: {type(E)}:{E.args()}: {p}')
                                 continue
 
         stop = False
-        listener1 = browser.cdp.add_listener('Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/forums')
-        listener2 = browser.cdp.add_listener('Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/globalPaging/page')
+        listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/forums')
+        listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/globalPaging/page')
         end_time = time.time() + timeout
         threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
@@ -187,6 +192,7 @@ class Post:
         self.forum: Forum = forum
         self.id: int = id
         self.comments: list[Comment] = []
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<Dcard post: {self.forum.alias}:{self.id}>'
@@ -199,7 +205,8 @@ class Post:
 
         def load_page():
             nonlocal stop
-            browser.get(self.url, referrer='https://www.google.com/')
+            browser.get(self.url)
+            self._logger.info(f'Get: {self.url}')
             time.sleep(5)
             while not stop:
                 browser.cdp.send('Runtime.evaluate', expression="document.querySelector('div#comment-list-section button:nth-last-child(2)').click()")
@@ -343,13 +350,15 @@ class Post:
                             comment.post_avatar = c['postAvatar']
                             comment.activity_avatar = c['activityAvatar']
                             self.comments.append(comment)
-                        except:
+                            self._logger.info(f'Get comment: {comment.__repr__()}')
+                        except Exception as E:
+                            self._logger.warning(f'Get comment failed: {type(E)}:{E.args()}: {c}')
                             continue
 
         stop = False
-        listener1 = browser.cdp.add_listener('Network.responseReceived', url_contain=self.url)
-        listener2 = browser.cdp.add_listener('Network.responseReceived', url_contain=f'https://www.dcard.tw/service/api/v2/posts/{self.id}?withPreview=true')
-        listener3 = browser.cdp.add_listener('Network.responseReceived', url_contain=f'https://www.dcard.tw/service/api/v3/posts/{self.id}/comments?sort=oldest')
+        listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
+        listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain=f'https://www.dcard.tw/service/api/v2/posts/{self.id}?withPreview=true')
+        listener3 = browser.cdp.add_listener(f'Listener 3: {self.__repr__()}', 'Network.responseReceived', url_contain=f'https://www.dcard.tw/service/api/v3/posts/{self.id}/comments?sort=oldest')
         end_time = time.time() + timeout
         threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
@@ -374,6 +383,7 @@ class Comment:
         self.forum: Forum = forum
         self.post: Post = post
         self.floor: int = floor
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<Dcard comment: {self.forum.alias}:{self.post.id}:b{self.floor}>'

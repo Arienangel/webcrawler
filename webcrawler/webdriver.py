@@ -1,12 +1,12 @@
 import atexit
 import json
+import logging
 import queue
 import random
 import subprocess
 import threading
 import time
 from collections import defaultdict
-from typing import Literal
 
 import requests
 import websocket
@@ -14,6 +14,7 @@ from selenium import webdriver
 
 
 class ChromeDriver(webdriver.Chrome):
+    _logger = logging.getLogger('ChromeDriver')
 
     def __init__(
         self,
@@ -46,7 +47,9 @@ class ChromeDriver(webdriver.Chrome):
             self.options.add_argument(option)
         for name, value in experimental_options.items():
             self.options.add_experimental_option(name, value)
+        self._logger.info(f'Chrome options: {" ".join(self.options.arguments)}')
         super().__init__(options=self.options, service=self.service)
+        self._logger.info(f'ChromeDriver process: {" ".join(self.service.process.args)}')
         if remote_debugging_port:
             self.cdp = CDP(remote_debugging_port=remote_debugging_port)
             self.cdp.send('Network.enable')
@@ -70,6 +73,7 @@ class ChromeDriver(webdriver.Chrome):
 
 
 class ChromeProcess:
+    _logger = logging.getLogger('ChromeProcess')
 
     def __init__(
         self,
@@ -102,6 +106,7 @@ class ChromeProcess:
             self.options.append(option)
         if not self.use_exist:
             self.process = subprocess.Popen(args=self.options, start_new_session=True)
+            self._logger.info(f'Chrome process: {" ".join(self.process.args)}')
         if remote_debugging_port:
             self.cdp = CDP(remote_debugging_host=remote_debugging_host, remote_debugging_port=remote_debugging_port)
             self.cdp.send('Network.enable')
@@ -133,19 +138,23 @@ class ChromeProcess:
 
 # https://chromedevtools.github.io/devtools-protocol
 class CDP:
+    _logger = logging.getLogger('ChromeDevToolsProtocol')
 
     def __init__(self, remote_debugging_host: str = '127.0.0.1', remote_debugging_port: str = 9222, timeout: float = 10):
         self.remote_debugging_host = remote_debugging_host
         self.remote_debugging_port = remote_debugging_port
         end_time = time.time() + timeout
-        while time.time() < end_time:
-            try:
-                self.websocket_url = requests.get(f'http://{self.remote_debugging_host}:{self.remote_debugging_port}/json').json()[0]['webSocketDebuggerUrl']
-                break
-            except:
-                continue
-        else:
-            raise TimeoutError(f'Failed to connect http://{self.remote_debugging_host}:{self.remote_debugging_port}/json')
+        with requests.Session() as session:
+            while time.time() < end_time:
+                try:
+                    self.websocket_url = session.get(f'http://{self.remote_debugging_host}:{self.remote_debugging_port}/json').json()[0]['webSocketDebuggerUrl']
+                    time.sleep(0.5)
+                    break
+                except:
+                    continue
+            else:
+                raise TimeoutError(f'Failed to connect http://{self.remote_debugging_host}:{self.remote_debugging_port}/json')
+        self._logger.info(f'CDP websocket url: {self.websocket_url}')
         self.websocket = websocket.create_connection(self.websocket_url)
         self.received = list()
         self._used_id = set()
@@ -184,7 +193,7 @@ class CDP:
         else:
             raise ValueError(f'{id = } not found')
 
-    def add_listener(self, cdp_method: str = None, request_id: str = None, resource_type: str = None, url_exact: str = None, url_contain: str = None, status_code: int = None):
+    def add_listener(self, name: str, cdp_method: str = None, request_id: str = None, resource_type: str = None, url_exact: str = None, url_contain: str = None, status_code: int = None):
 
         def listener(response: dict):
             check = []
@@ -199,10 +208,12 @@ class CDP:
                 return
             if all(check):
                 q.put(response)
-                print(cdp_method, url_contain, response)
+                self._logger.debug(f'Listener {q.name} get: {response}')
 
         q = queue.Queue()
+        q.name = name
         self._listeners.update({q: listener})
+        self._logger.info(f'Add network listener: {q.name}')
         return q
 
     def _recv(self):
@@ -211,11 +222,13 @@ class CDP:
                 data = defaultdict(lambda: None)
                 data.update(json.loads(self.websocket.recv()))
                 self.received.append(data)
+                self._logger.debug(f'Network event: {data}')
                 for q, listener in self._listeners.items():
                     try:
                         listener(data)
                     except queue.ShutDown:
                         del self._listeners[q]
+                        self._logger.info(f'Remove network listener: {q.name}')
             except:
                 if self._running:
                     continue
@@ -238,4 +251,7 @@ class CDP:
 
     def stop(self):
         self._running = False
+        for q in self._listeners.keys():
+            if not q.is_shutdown():
+                q.shutdown()
         self.websocket.close()

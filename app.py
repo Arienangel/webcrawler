@@ -1,3 +1,4 @@
+import logging
 import queue
 import sqlite3
 import threading
@@ -11,6 +12,7 @@ from webcrawler.webdriver import ChromeProcess
 
 
 class dcard_crawler:
+    _logger = logging.getLogger('Dcard crawler')
 
     def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_forum_get: bool = True, do_post_get: bool = True):
         self._stop_browser_atexit = False if browser else True
@@ -41,11 +43,13 @@ class dcard_crawler:
             for forum in forums:
                 if isinstance(forum, str): forum = dcard.Forum(alias=forum)
                 if self.do_forum_get:
+                    self._logger.info(f'Get {forum.__repr__()}')
                     forum.get(self.browser, **forum_get_kwargs)
                 for post in forum.posts[::-1]:
                     if self.do_post_get:
                         try:
                             time.sleep(5)
+                            self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
                             self.queue_comments.put(post.comments)
                         except:
@@ -62,7 +66,9 @@ class dcard_crawler:
                     cursor = db.execute(f'SELECT id FROM `{post.forum.alias}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.forum.alias}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.school, post.author.department, post.title, post.content])
-                except:
+                        self._logger.info(f'Write db: {post.__repr__()}')
+                except Exception as E:
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {post.__repr__()}')
                     continue
 
     def write_comments_db(self, comments: list[dcard.Comment], db_path: str):
@@ -73,11 +79,14 @@ class dcard_crawler:
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.created_time.timestamp()), comment.author.school, comment.author.department, comment.content])
-                except:
+                        self._logger.info(f'Write db: {comment.__repr__()}')
+                except Exception as E:
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {comment.__repr__()}')
                     continue
 
 
 class facebook_crawler:
+    _logger = logging.getLogger('Facebook crawler')
 
     def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_page_get: bool = True, do_post_get: bool = True):
         self._stop_browser_atexit = False if browser else True
@@ -108,11 +117,13 @@ class facebook_crawler:
             for page in pages:
                 if isinstance(page, str): page = facebook.Page(alias=page)
                 if self.do_page_get:
+                    self._logger.info(f'Get {page.__repr__()}')
                     page.get(self.browser, **page_get_kwargs)
                 for post in page.posts[::-1]:
                     if self.do_post_get:
                         try:
                             time.sleep(5)
+                            self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
                             self.queue_comments.put(post.comments)
                         except:
@@ -129,7 +140,8 @@ class facebook_crawler:
                     cursor = db.execute(f'SELECT id FROM `{post.page.id}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.page.id}` VALUES (?,?,?,?,?);', [post.id, post.pfbid, int(post.created_time.timestamp()), post.title, post.content])
-                except:
+                except Exception as E:
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {post.__repr__()}')
                     continue
 
     def write_comments_db(self, comments: list[facebook.Comment], db_path: str):
@@ -140,11 +152,14 @@ class facebook_crawler:
                     cursor = db.execute(f'SELECT id FROM `{comment.post.id}` WHERE id=?;', [comment.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?);', [comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.alias, comment.author.name, comment.content])
-                except:
+                        self._logger.info(f'Write db: {comment.__repr__()}')
+                except Exception as E:
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {comment.__repr__()}')
                     continue
 
 
 class plurk_crawler:
+    _logger = logging.getLogger('Plurk crawler')
 
     def __init__(self, browser: requests.Session = None, do_search_get: bool = True, do_post_get: bool = False):
         self._stop_browser_atexit = False if browser else True
@@ -175,11 +190,13 @@ class plurk_crawler:
             for search in searches:
                 if isinstance(search, str): search = plurk.Search(query=search)
                 if self.do_search_get:
+                    self._logger.info(f'Get {search.__repr__()}')
                     search.get(self.browser, **search_get_kwargs)
                 for post in search.posts[::-1]:
                     if self.do_post_get:
                         try:
                             time.sleep(16)
+                            self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
                             self.queue_comments.put(post.comments)
                         except:
@@ -196,7 +213,9 @@ class plurk_crawler:
                     cursor = db.execute(f'SELECT id FROM `{post.query}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.query}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.id, post.author.nickname, post.author.display_name, post.content_raw])
-                except:
+                        self._logger.info(f'Write db: {post.__repr__()}')
+                except Exception as E:
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {post.__repr__()}')
                     continue
 
     def write_comments_db(self, comments: list[plurk.Comment], db_path: str):
@@ -207,11 +226,14 @@ class plurk_crawler:
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?,?);', [comment.floor, comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.nickname, comment.author.display_name, comment.content])
-                except:
+                        self._logger.info(f'Write db: {comment.__repr__()}')
+                except Exception as E:
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {comment.__repr__()}')
                     continue
 
 
 class ptt_crawler:
+    _logger = logging.getLogger('Dcard crawler')
 
     def __init__(self, browser: requests.Session = None, do_forum_get: bool = True, do_post_get: bool = True):
         self._stop_browser_atexit = False if browser else True
@@ -242,10 +264,12 @@ class ptt_crawler:
             for forum in forums:
                 if isinstance(forum, str): forum = ptt.Forum(name=forum)
                 if self.do_forum_get:
+                    self._logger.info(f'Get {forum.__repr__()}')
                     forum.get(self.browser, **forum_get_kwargs)
                 for post in forum.posts[::-1]:
                     if self.do_post_get:
                         try:
+                            self._logger.info(f'Get {post.__repr__()}')
                             time.sleep(2)
                             post.get(self.browser, **post_get_kwargs)
                             self.queue_comments.put(post.comments)
@@ -263,7 +287,9 @@ class ptt_crawler:
                     cursor = db.execute(f'SELECT id FROM `{post.forum.name}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.forum.name}` VALUES (?,?,?,?,?);', [post.id, int(post.time.timestamp()), post.author, post.title, post.content])
-                except:
+                        self._logger.info(f'Write db: {post.__repr__()}')
+                except Exception as E:
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {post.__repr__()}')
                     continue
 
     def write_comments_db(self, comments: list[plurk.Comment], db_path: str):
@@ -274,7 +300,9 @@ class ptt_crawler:
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.time.timestamp()), comment.reaction, comment.author, comment.content])
-                except:
+                        self._logger.info(f'Write db: {comment.__repr__()}')
+                except Exception as E:
+                    self._logger.warning(f'Write db failed: {type(E)}:{E.args()}: {comment.__repr__()}')
                     continue
 
 
@@ -283,9 +311,15 @@ if __name__ == '__main__':
     import sys
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', type=str, default="config.yaml")
+    parser.add_argument('--log-level', type=int, default=30)
     args = parser.parse_args()
     with open(args.f, encoding='utf-8') as f:
         config = yaml.load(f, yaml.SafeLoader)
+    logging.basicConfig(
+        format=config['logging']['format'] or '%(asctime)s %(levelname)s %(name)s: %(message)s',
+        level=config['logging']['level'] or args.log_level,
+    )
+    logger = logging.getLogger('App')
     jobs = []
     if config['webcrawler']['dcard']['enable']:
         chromeprocess_kwargs = config['webdriver']['chromeprocess']
@@ -301,6 +335,7 @@ if __name__ == '__main__':
             config['webcrawler']['dcard']['db']['posts'],
             config['webcrawler']['dcard']['db']['comments'],
         ]))
+        logger.info(f"Add dcard job: {config['webcrawler']['dcard']['forums']}")
     if config['webcrawler']['facebook']['enable']:
         chromeprocess_kwargs = config['webdriver']['chromeprocess']
         chromeprocess_kwargs.update(config['webcrawler']['facebook']['webdriver']['chromeprocess'])
@@ -315,6 +350,7 @@ if __name__ == '__main__':
             config['webcrawler']['facebook']['db']['posts'],
             config['webcrawler']['facebook']['db']['comments'],
         ]))
+        logger.info(f"Add facebook job: {config['webcrawler']['facebook']['pages']}")
     if config['webcrawler']['plurk']['enable']:
         jobs.append(threading.Thread(target=plurk_crawler(
             do_search_get=config['webcrawler']['plurk']['do_search_get'],
@@ -326,6 +362,7 @@ if __name__ == '__main__':
             config['webcrawler']['plurk']['db']['posts'],
             config['webcrawler']['plurk']['db']['comments'],
         ]))
+        logger.info(f"Add plurk job: {config['webcrawler']['plurk']['searches']}")
     if config['webcrawler']['ptt']['enable']:
         jobs.append(threading.Thread(target=ptt_crawler(
             do_forum_get=config['webcrawler']['ptt']['do_forum_get'],
@@ -337,6 +374,7 @@ if __name__ == '__main__':
             config['webcrawler']['ptt']['db']['posts'],
             config['webcrawler']['ptt']['db']['comments'],
         ]))
+        logger.info(f"Add ptt job: {config['webcrawler']['ptt']['forums']}")
     try:
         [job.start() for job in jobs]
         [job.join() for job in jobs]

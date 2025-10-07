@@ -22,4 +22,5 @@ dev = [
     "ipykernel>=6.30.1",
     "pandas>=2.3.3",
     "pytest>=8.4.2",
+    "yapf>=0.43.0",
 ]
