@@ -39,6 +39,7 @@ class dcard_crawler:
         return
 
     def run_crawler(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
+        used_posts = set()
         try:
             for forum in forums:
                 if isinstance(forum, str): forum = dcard.Forum(alias=forum)
@@ -50,8 +51,12 @@ class dcard_crawler:
                     except Exception as E:
                         self._logger.warning(f'Get forum failed: {type(E)}:{E.args}: {forum.__repr__()}')
                         continue
-                for post in forum.posts[::-1]:
-                    if self.do_post_get:
+                if self.do_post_get:
+                    for post in forum.posts[::-1]:
+                        if post.id in used_posts:
+                            continue
+                        else:
+                            used_posts.add(post.id)
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
@@ -60,7 +65,7 @@ class dcard_crawler:
                         except Exception as E:
                             self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
-                    self.queue_posts.put([post])
+                self.queue_posts.put(forum.posts)
         finally:
             self.stop = True
 
@@ -72,7 +77,7 @@ class dcard_crawler:
                     cursor = db.execute(f'SELECT id FROM `{post.forum.alias}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.forum.alias}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.school, post.author.department, post.title, post.content])
-                        self._logger.info(f'Write db: {post.__repr__()}')
+                        self._logger.debug(f'Write db: {post.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {post.__repr__()}')
                     continue
@@ -85,7 +90,7 @@ class dcard_crawler:
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.created_time.timestamp()), comment.author.school, comment.author.department, comment.content])
-                        self._logger.info(f'Write db: {comment.__repr__()}')
+                        self._logger.debug(f'Write db: {comment.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {comment.__repr__()}')
                     continue
@@ -119,6 +124,7 @@ class facebook_crawler:
         return
 
     def run_crawler(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
+        used_posts = set()
         try:
             for page in pages:
                 if isinstance(page, str): page = facebook.Page(alias=page)
@@ -130,8 +136,12 @@ class facebook_crawler:
                     except Exception as E:
                         self._logger.warning(f'Get page failed: {type(E)}:{E.args}: {page.__repr__()}')
                         continue
-                for post in page.posts[::-1]:
-                    if self.do_post_get:
+                if self.do_post_get:
+                    for post in page.posts[::-1]:
+                        if post.id in used_posts:
+                            continue
+                        else:
+                            used_posts.add(post.id)
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
@@ -140,7 +150,7 @@ class facebook_crawler:
                         except Exception as E:
                             self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
-                    self.queue_posts.put([post])
+                self.queue_posts.put(page.posts)
         finally:
             self.stop = True
 
@@ -152,6 +162,7 @@ class facebook_crawler:
                     cursor = db.execute(f'SELECT id FROM `{post.page.id}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.page.id}` VALUES (?,?,?,?,?);', [post.id, post.pfbid, int(post.created_time.timestamp()), post.title, post.content])
+                        self._logger.debug(f'Write db: {post.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {post.__repr__()}')
                     continue
@@ -164,7 +175,7 @@ class facebook_crawler:
                     cursor = db.execute(f'SELECT id FROM `{comment.post.id}` WHERE id=?;', [comment.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?);', [comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.alias, comment.author.name, comment.content])
-                        self._logger.info(f'Write db: {comment.__repr__()}')
+                        self._logger.debug(f'Write db: {comment.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {comment.__repr__()}')
                     continue
@@ -198,6 +209,7 @@ class plurk_crawler:
         return
 
     def run_crawler(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
+        used_posts = set()
         try:
             for search in searches:
                 if isinstance(search, str): search = plurk.Search(query=search)
@@ -209,8 +221,12 @@ class plurk_crawler:
                     except Exception as E:
                         self._logger.warning(f'Get search failed: {type(E)}:{E.args}: {search.__repr__()}')
                         continue
-                for post in search.posts[::-1]:
-                    if self.do_post_get:
+                if self.do_post_get:
+                    for post in search.posts[::-1]:
+                        if post.id in used_posts:
+                            continue
+                        else:
+                            used_posts.add(post.id)
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
@@ -219,7 +235,7 @@ class plurk_crawler:
                         except Exception as E:
                             self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
-                    self.queue_posts.put([post])
+                self.queue_posts.put(search.posts)
         finally:
             self.stop = True
 
@@ -231,7 +247,7 @@ class plurk_crawler:
                     cursor = db.execute(f'SELECT id FROM `{post.query}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.query}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.id, post.author.nickname, post.author.display_name, post.content_raw])
-                        self._logger.info(f'Write db: {post.__repr__()}')
+                        self._logger.debug(f'Write db: {post.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {post.__repr__()}')
                     continue
@@ -244,7 +260,7 @@ class plurk_crawler:
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?,?);', [comment.floor, comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.nickname, comment.author.display_name, comment.content])
-                        self._logger.info(f'Write db: {comment.__repr__()}')
+                        self._logger.debug(f'Write db: {comment.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {comment.__repr__()}')
                     continue
@@ -278,6 +294,7 @@ class ptt_crawler:
         return
 
     def run_crawler(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
+        used_posts = set()
         try:
             for forum in forums:
                 if isinstance(forum, str): forum = ptt.Forum(name=forum)
@@ -289,8 +306,12 @@ class ptt_crawler:
                     except Exception as E:
                         self._logger.warning(f'Get forum failed: {type(E)}:{E.args}: {forum.__repr__()}')
                         continue
-                for post in forum.posts[::-1]:
-                    if self.do_post_get:
+                if self.do_post_get:
+                    for post in forum.posts[::-1]:
+                        if post.id in used_posts:
+                            continue
+                        else:
+                            used_posts.add(post.id)
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
@@ -299,7 +320,7 @@ class ptt_crawler:
                         except Exception as E:
                             self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
-                    self.queue_posts.put([post])
+                self.queue_posts.put(forum.posts)
         finally:
             self.stop = True
 
@@ -311,7 +332,7 @@ class ptt_crawler:
                     cursor = db.execute(f'SELECT id FROM `{post.forum.name}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.forum.name}` VALUES (?,?,?,?,?,?);', [post.id, int(post.time.timestamp()), post.author.id, post.author.name, post.title, post.content])
-                        self._logger.info(f'Write db: {post.__repr__()}')
+                        self._logger.debug(f'Write db: {post.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {post.__repr__()}')
                     continue
@@ -324,7 +345,7 @@ class ptt_crawler:
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.time.timestamp()), comment.reaction, comment.author.id, comment.content])
-                        self._logger.info(f'Write db: {comment.__repr__()}')
+                        self._logger.debug(f'Write db: {comment.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {comment.__repr__()}')
                     continue

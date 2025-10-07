@@ -208,7 +208,6 @@ class CDP:
                 return
             if all(check):
                 q.put(response)
-                self._logger.debug(f'Listener {q.name} get: {response}')
 
         q = queue.Queue()
         q.name = name
@@ -222,7 +221,6 @@ class CDP:
                 data = defaultdict(lambda: None)
                 data.update(json.loads(self.websocket.recv()))
                 self.received.append(data)
-                self._logger.debug(f'Network event: {data}')
                 for q, listener in self._listeners.items():
                     try:
                         listener(data)
