@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import random
 import re
 import threading
@@ -17,6 +18,7 @@ class Page:
         self.alias: str = alias if alias else None
         self.name = None
         self.posts: list[Post] = []
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<Facebook page: {self.alias if self.alias else self.id}>'
@@ -29,6 +31,7 @@ class Page:
 
         def load_page():
             browser.get(self.url)
+            self._logger.info(f'Get: {self.url}')
             time.sleep(5)
             while not stop:
                 browser.cdp.send('Runtime.evaluate', expression='''document.querySelector('div[role="dialog"] i.x1b0d499.x1d69dk1').click()''')
@@ -76,12 +79,14 @@ class Page:
                         else:
                             post.attachments = []
                         self.posts.append(post)
-                    except:
+                        self._logger.info(f'Get post: {post.__repr__()}')
+                    except Exception as E:
+                        self._logger.warning(f'Get post failed: {type(E)}:{E.args()}: {p}')
                         continue
 
         stop = False
-        listener1 = browser.cdp.add_listener('Network.responseReceived', url_contain=self.url)
-        listener2 = browser.cdp.add_listener('Network.responseReceived', url_contain='https://www.facebook.com/api/graphql/')
+        listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
+        listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.facebook.com/api/graphql/')
         end_time = time.time() + timeout
         threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
@@ -105,6 +110,7 @@ class Post:
         self.id: int = id if id else None
         self.pfbid: str = pfbid if pfbid else None
         self.comments: list[Comment] = []
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<Facebook post: {self.page.alias if self.page.alias else self.page.id}:{self.id if self.id else self.pfbid}>'
@@ -118,6 +124,7 @@ class Post:
         def load_page():
             nonlocal stop
             browser.get(self.url)
+            self._logger.info(f'Get: {self.url}')
             time.sleep(5)
             while not stop:
                 browser.scroll(
@@ -234,11 +241,13 @@ class Post:
                             comment.comment_upper_badge_renderer = c['node']['comment_upper_badge_renderer']
                             comment.elevated_comment_data = c['node']['elevated_comment_data']
                             self.comments.append(comment)
-                        except:
+                            self._logger.info(f'Get comment: {comment.__repr__()}')
+                        except Exception as E:
+                            self._logger.warning(f'Get comment failed: {type(E)}:{E.args()}: {c}')
                             continue
 
         stop = False
-        listener1 = browser.cdp.add_listener('Network.responseReceived', url_contain=self.url)
+        listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
         end_time = time.time() + timeout
         threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
@@ -259,6 +268,7 @@ class Comment:
         self.page: Page = page
         self.post: Post = post
         self.id: int = id
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<Facebook post: {self.page.alias if self.page.alias else self.page.id}:{self.id if self.id else self.pfbid}>'

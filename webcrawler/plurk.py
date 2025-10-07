@@ -1,4 +1,5 @@
 import datetime
+import logging
 import queue
 import threading
 import time
@@ -24,6 +25,7 @@ class Search:
         self.api_body: dict = {"query": query}
         self.posts: list[Post] = []
         self.users: dict[int, User] = {}
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<Plurk search: {self.query}>'
@@ -37,7 +39,9 @@ class Search:
         def load_page():
             while not stop:
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
+                self._logger.info(f'Get: {self.api_url} {self.api_body}')
                 if response.headers['Content-Type'] != 'application/json':
+                    self._logger.warning(f'Not a json file: {self.api_url}')
                     time.sleep(16)
                     continue
                 response_queue.put(response.json())
@@ -127,7 +131,9 @@ class Search:
                             post.responded = p['responded']
                             post.favorite = p['favorite']
                             self.posts.append(post)
-                        except:
+                            self._logger.info(f'Get post: {post.__repr__()}')
+                        except Exception as E:
+                            self._logger.warning(f'Get post failed: {type(E)}:{E.args()}: {p}')
                             continue
                     try:
                         next_id.put(self.posts[-1].id)
@@ -163,6 +169,7 @@ class Post:
         self.api_body: dict = {"plurk_id": self.id, "from_response_id": 0}
         self.comments: list[Comment] = []
         self.users: dict[int, User] = {}
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<Plurk post: {self.id} ({self.b36})>'
@@ -180,7 +187,9 @@ class Post:
         def load_page():
             while not stop:
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
+                self._logger.info(f'Get: {self.api_url} {self.api_body}')
                 if response.headers['Content-Type'] != 'application/json':
+                    self._logger.warning(f'Not a json file: {self.api_url}')
                     time.sleep(16)
                     continue
                 response_queue.put(response.json())
@@ -247,7 +256,9 @@ class Post:
                             comment.coins = c['coins']
                             comment.editability = c['editability']
                             self.comments.append(comment)
-                        except:
+                            self._logger.info(f'Get comment: {comment.__repr__()}')
+                        except Exception as E:
+                            self._logger.warning(f'Get comment failed: {type(E)}:{E.args()}: {c}')
                             continue
                         finally:
                             floor += 1
@@ -284,6 +295,7 @@ class Comment:
         self.post: Post = post
         self.id: int = id
         self.floor: int = floor
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<Plurk comment: {self.post.id} ({self.post.b36}):b{self.floor}>'

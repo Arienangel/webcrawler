@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 
@@ -11,6 +12,7 @@ class Forum:
     def __init__(self, name: str):
         self.name: str = name
         self.posts: list[Post] = []
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<PTT forum: {self.name}>'
@@ -25,20 +27,26 @@ class Forum:
         end_time = time.time() + timeout
         while (time.time() < end_time) and (len(self.posts) < min_count):
             response = BeautifulSoup(session.get(url, timeout=timeout).text, features="html.parser")
+            self._logger.info(f'Get: {url}')
             posts = []
             for p in response.select('div.r-list-container > div'):
-                if p.get('class')[0] == 'search-bar':
+                try:
+                    if p.get('class')[0] == 'search-bar':
+                        continue
+                    elif p.get('class')[0] == 'r-list-sep':
+                        break
+                    elif p.get('class')[0] == 'r-ent':
+                        post = Post(self, p.select('div.title a')[0].get('href').rstrip('.html').split('/')[-1])
+                        post.author = p.select('div.author')[0].text
+                        post.title = p.select('div.title a')[0].text
+                        post.content = None
+                        reaction_count = p.select('div.nrec')[0].text
+                        post.reaction_count = int(reaction_count) if reaction_count else 0
+                        posts.append(post)
+                        self._logger.info(f'Get post: {post.__repr__()}')
+                except Exception as E:
+                    self._logger.warning(f'Get post failed: {type(E)}:{E.args()}: {p}')
                     continue
-                elif p.get('class')[0] == 'r-list-sep':
-                    break
-                elif p.get('class')[0] == 'r-ent':
-                    post = Post(self, p.select('div.title a')[0].get('href').rstrip('.html').split('/')[-1])
-                    post.author = p.select('div.author')[0].text
-                    post.title = p.select('div.title a')[0].text
-                    post.content = None
-                    reaction_count = p.select('div.nrec')[0].text
-                    post.reaction_count = int(reaction_count) if reaction_count else 0
-                    posts.append(post)
             self.posts.extend(posts[::-1])
             next_url = response.select('div#action-bar-container > div.action-bar > div.btn-group-paging')[0].find('a', string='‹ 上頁').get('href')
             if next_url:
@@ -54,6 +62,7 @@ class Post:
         self.forum: Forum = forum
         self.id: str = id
         self.comments: list[Post] = []
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<PTT post: {self.forum.name}:{self.id}>'
@@ -65,6 +74,7 @@ class Post:
     def get(self, session: requests.Session, timeout: float = 10):
         session.headers.update({"Cookie": "over18=1"})
         response = BeautifulSoup(session.get(self.url, timeout=timeout).text, features="html.parser")
+        self._logger.info(f'Get: {self.url}')
         header = response.select('div#main-content > div.article-metaline')
         self.author, self.nickname = header[0].select('span.article-meta-value')[0].text.split(' ', maxsplit=1)
         self.title = header[1].select('span.article-meta-value')[0].text
@@ -86,7 +96,9 @@ class Post:
                 comment.time = dateutil.parser.parse(f'{year}/{time}')
                 month = comment.time.year
                 self.comments.append(comment)
-            except:
+                self._logger.info(f'Get comment: {comment.__repr__()}')
+            except Exception as E:
+                self._logger.warning(f'Get comment failed: {type(E)}:{E.args()}: {c}')
                 continue
 
 
@@ -96,6 +108,7 @@ class Comment:
         self.forum: Forum = forum
         self.post: Post = post
         self.floor: int = floor
+        self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
         return f'<PTT comment: {self.forum.name}:{self.post.id}:b{self.floor}>'
