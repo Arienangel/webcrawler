@@ -13,7 +13,7 @@ from .webdriver import ChromeProcess
 
 class Forum:
 
-    def __init__(self, alias: str=None):
+    def __init__(self, alias: str = None):
         self.alias: str = alias
         self.posts: list[Post] = []
         self._logger = logging.getLogger(self.__repr__())
@@ -32,6 +32,8 @@ class Forum:
             self._logger.info(f'Get: {self.url}')
             time.sleep(8)
             while not stop:
+                if 'https://challenges.cloudflare.com/turnstile' in browser.page_source:
+                    continue
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
                     y=browser.window_size[1] // 2 + int(10 * (random.random() - 0.5)),
@@ -188,7 +190,7 @@ class Forum:
 
 class Post:
 
-    def __init__(self, forum: Forum=None, id: int=None):
+    def __init__(self, forum: Forum = None, id: int = None):
         self.forum: Forum = forum
         self.id: int = id
         self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
@@ -213,6 +215,8 @@ class Post:
             self._logger.info(f'Get: {self.url}')
             time.sleep(8)
             while not stop:
+                if 'https://challenges.cloudflare.com/turnstile' in browser.page_source:
+                    continue
                 browser.cdp.send('Runtime.evaluate', expression="document.querySelector('div#comment-list-section button:nth-last-child(2)').click()")
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
@@ -381,7 +385,7 @@ class Post:
 
 class Comment:
 
-    def __init__(self, forum: Forum=None, post: Post=None, floor: int=None):
+    def __init__(self, forum: Forum = None, post: Post = None, floor: int = None):
         self.forum: Forum = forum
         self.post: Post = post
         self.floor: int = floor
