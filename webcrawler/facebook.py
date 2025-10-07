@@ -280,7 +280,7 @@ class Comment:
         self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
-        return f'<Facebook post: {self.page.alias if self.page.alias else self.page.id}:{self.id if self.id else self.pfbid}>'
+        return f'<Facebook comment: {self.page.alias if self.page.alias else self.page.id}:{self.post.id if self.post.id else self.post.pfbid}:{self.id}>'
 
     @property
     def url(self):
