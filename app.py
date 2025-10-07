@@ -43,16 +43,22 @@ class dcard_crawler:
             for forum in forums:
                 if isinstance(forum, str): forum = dcard.Forum(alias=forum)
                 if self.do_forum_get:
-                    self._logger.info(f'Get {forum.__repr__()}')
-                    forum.get(self.browser, **forum_get_kwargs)
+                    try:
+                        self._logger.info(f'Get {forum.__repr__()}')
+                        forum.get(self.browser, **forum_get_kwargs)
+                        time.sleep(8)
+                    except Exception as E:
+                        self._logger.warning(f'Get forum failed: {type(E)}:{E.args}: {forum.__repr__()}')
+                        continue
                 for post in forum.posts[::-1]:
                     if self.do_post_get:
                         try:
-                            time.sleep(5)
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
                             self.queue_comments.put(post.comments)
-                        except:
+                            time.sleep(8)
+                        except Exception as E:
+                            self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
                     self.queue_posts.put([post])
         finally:
@@ -117,16 +123,22 @@ class facebook_crawler:
             for page in pages:
                 if isinstance(page, str): page = facebook.Page(alias=page)
                 if self.do_page_get:
-                    self._logger.info(f'Get {page.__repr__()}')
-                    page.get(self.browser, **page_get_kwargs)
+                    try:
+                        self._logger.info(f'Get {page.__repr__()}')
+                        page.get(self.browser, **page_get_kwargs)
+                        time.sleep(5)
+                    except Exception as E:
+                        self._logger.warning(f'Get page failed: {type(E)}:{E.args}: {page.__repr__()}')
+                        continue
                 for post in page.posts[::-1]:
                     if self.do_post_get:
                         try:
-                            time.sleep(5)
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
                             self.queue_comments.put(post.comments)
-                        except:
+                            time.sleep(5)
+                        except Exception as E:
+                            self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
                     self.queue_posts.put([post])
         finally:
@@ -190,16 +202,22 @@ class plurk_crawler:
             for search in searches:
                 if isinstance(search, str): search = plurk.Search(query=search)
                 if self.do_search_get:
-                    self._logger.info(f'Get {search.__repr__()}')
-                    search.get(self.browser, **search_get_kwargs)
+                    try:
+                        self._logger.info(f'Get {search.__repr__()}')
+                        search.get(self.browser, **search_get_kwargs)
+                        time.sleep(16)
+                    except Exception as E:
+                        self._logger.warning(f'Get search failed: {type(E)}:{E.args}: {search.__repr__()}')
+                        continue
                 for post in search.posts[::-1]:
                     if self.do_post_get:
                         try:
-                            time.sleep(16)
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
                             self.queue_comments.put(post.comments)
-                        except:
+                            time.sleep(16)
+                        except Exception as E:
+                            self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
                     self.queue_posts.put([post])
         finally:
@@ -264,16 +282,22 @@ class ptt_crawler:
             for forum in forums:
                 if isinstance(forum, str): forum = ptt.Forum(name=forum)
                 if self.do_forum_get:
-                    self._logger.info(f'Get {forum.__repr__()}')
-                    forum.get(self.browser, **forum_get_kwargs)
+                    try:
+                        self._logger.info(f'Get {forum.__repr__()}')
+                        forum.get(self.browser, **forum_get_kwargs)
+                        time.sleep(5)
+                    except Exception as E:
+                        self._logger.warning(f'Get forum failed: {type(E)}:{E.args}: {forum.__repr__()}')
+                        continue
                 for post in forum.posts[::-1]:
                     if self.do_post_get:
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
-                            time.sleep(2)
                             post.get(self.browser, **post_get_kwargs)
                             self.queue_comments.put(post.comments)
-                        except:
+                            time.sleep(5)
+                        except Exception as E:
+                            self._logger.warning(f'Get post failed: {type(E)}:{E.args}: {post.__repr__()}')
                             continue
                     self.queue_posts.put([post])
         finally:
