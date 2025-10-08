@@ -29,7 +29,7 @@ class Forum:
 
         def load_page():
             browser.get(self.url)
-            self._logger.info(f'Get: {self.url}')
+            self._logger.info(f'Connect: {self.url}')
             time.sleep(8)
             while not stop:
                 if 'https://challenges.cloudflare.com/turnstile' in browser.page_source:
@@ -212,7 +212,7 @@ class Post:
         def load_page():
             nonlocal stop
             browser.get(self.url)
-            self._logger.info(f'Get: {self.url}')
+            self._logger.info(f'Connect: {self.url}')
             time.sleep(8)
             while not stop:
                 if 'https://challenges.cloudflare.com/turnstile' in browser.page_source:

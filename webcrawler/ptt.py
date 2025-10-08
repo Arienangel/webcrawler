@@ -28,7 +28,7 @@ class Forum:
         end_time = time.time() + timeout
         while (time.time() < end_time) and (len(self.posts) < min_count):
             response = BeautifulSoup(session.get(url, timeout=timeout).text, features="html.parser")
-            self._logger.info(f'Get: {url}')
+            self._logger.info(f'Connect: {url}')
             posts = []
             for p in response.select('div.r-list-container > div'):
                 try:
@@ -90,7 +90,7 @@ class Post:
     def get(self, session: requests.Session, timeout: float = 10):
         session.headers.update({"Cookie": "over18=1"})
         response = BeautifulSoup(session.get(self.url, timeout=timeout).text, features="html.parser")
-        self._logger.info(f'Get: {self.url}')
+        self._logger.info(f'Connect: {self.url}')
         header = response.select('div#main-content > div.article-metaline')
         self.author.id, self.author.name = header[0].select('span.article-meta-value')[0].text.split(' ', maxsplit=1)
         self.author.name=self.author.name[1:-1]

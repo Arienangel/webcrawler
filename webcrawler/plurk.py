@@ -39,7 +39,7 @@ class Search:
         def load_page():
             while not stop:
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
-                self._logger.info(f'Get: {self.api_url} {self.api_body}')
+                self._logger.info(f'Connect: {self.api_url} {self.api_body}')
                 if response.headers['Content-Type'] != 'application/json':
                     self._logger.warning(f'Not a json file: {self.api_url}')
                     time.sleep(16)
@@ -192,7 +192,7 @@ class Post:
         def load_page():
             while not stop:
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
-                self._logger.info(f'Get: {self.api_url} {self.api_body}')
+                self._logger.info(f'Connect: {self.api_url} {self.api_body}')
                 if response.headers['Content-Type'] != 'application/json':
                     self._logger.warning(f'Not a json file: {self.api_url}')
                     time.sleep(16)
