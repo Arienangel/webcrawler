@@ -269,7 +269,7 @@ class plurk_crawler:
                     db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "id" INTEGAR, "time" INTEGAR, "author_id" INTEGAR, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
-                        db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?,?);', [comment.floor, comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.nickname, comment.author.display_name, comment.content])
+                        db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?,?);', [comment.floor, comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.nickname, comment.author.display_name, comment.content_raw])
                         self._logger.debug(f'Write db: {comment.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Write db failed: {type(E)}:{E.args}: {comment.__repr__()}')

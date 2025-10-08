@@ -31,7 +31,7 @@ class Page:
 
         def load_page():
             browser.get(self.url)
-            self._logger.info(f'Get: {self.url}')
+            self._logger.info(f'Connect: {self.url}')
             time.sleep(5)
             while not stop:
                 browser.cdp.send('Runtime.evaluate', expression='''document.querySelector('div[role="dialog"] i.x1b0d499.x1d69dk1').click()''')
@@ -129,7 +129,7 @@ class Post:
         def load_page():
             nonlocal stop
             browser.get(self.url)
-            self._logger.info(f'Get: {self.url}')
+            self._logger.info(f'Connect: {self.url}')
             time.sleep(5)
             while not stop:
                 browser.scroll(
