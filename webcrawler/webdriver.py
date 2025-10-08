@@ -119,8 +119,8 @@ class ChromeProcess:
     def get(self, url: str, **params):
         self.cdp.get(url, **params)
 
-    def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25, **params):
-        self.cdp.scroll(x, y, x_distance, y_distance, speed, count, repeat_delay, **params)
+    def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25, *, blocking: bool = True, **params):
+        self.cdp.scroll(x, y, x_distance, y_distance, speed, count, repeat_delay, blocking=blocking, **params)
 
     def __enter__(self):
         return self
@@ -175,9 +175,9 @@ class CDP:
     def get(self, url: str, **params):
         self.send('Page.navigate', url=url, **params)
 
-    def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25, **params):
+    def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25, *, blocking: bool = True, **params):
         self.send('Input.synthesizeScrollGesture', x=x, y=y, xDistance=x_distance, yDistance=y_distance, speed=speed, repeatCount=count - 1, repeatDelayMs=int(repeat_delay * 1000), **params)
-        time.sleep(max(abs(x_distance), abs(y_distance)) / speed * count + repeat_delay * (count - 1))
+        if blocking: time.sleep(max(abs(x_distance), abs(y_distance)) / speed * count + repeat_delay * (count - 1))
 
     def send(self, method: str, **params):
         id = self._get_id()
@@ -194,6 +194,7 @@ class CDP:
                 if r['id'] == id: return r
                 else: start_idx += 1
             except:
+                time.sleep(0.1)
                 continue
         else:
             raise ValueError(f'{id = } not found')

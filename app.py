@@ -32,6 +32,7 @@ class dcard_crawler:
         self.stop = False
         threading.Thread(target=self.run_crawler, args=[forums, forum_get_kwargs, post_get_kwargs]).start()
         while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
+            time.sleep(0.5)
             if posts_db_path:
                 if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
             if comments_db_path:
@@ -121,6 +122,7 @@ class facebook_crawler:
         self.stop = False
         threading.Thread(target=self.run_crawler, args=[pages, page_get_kwargs, post_get_kwargs]).start()
         while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
+            time.sleep(0.5)
             if posts_db_path:
                 if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
             if comments_db_path:
@@ -210,6 +212,7 @@ class plurk_crawler:
         self.stop = False
         threading.Thread(target=self.run_crawler, args=[searches, search_get_kwargs, post_get_kwargs]).start()
         while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
+            time.sleep(0.5)
             if posts_db_path:
                 if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
             if comments_db_path:
@@ -297,6 +300,7 @@ class ptt_crawler:
         self.stop = False
         threading.Thread(target=self.run_crawler, args=[forums, forum_get_kwargs, post_get_kwargs]).start()
         while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
+            time.sleep(0.5)
             if posts_db_path:
                 if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
             if comments_db_path:

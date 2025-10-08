@@ -42,10 +42,12 @@ class Forum:
                     speed=1200 + int(200 * (random.random() - 0.5)),
                     count=1,
                     repeat_delay=0.5 + random.random(),
+                    blocking=True,
                 )
 
         def read_received():
             while not stop:
+                time.sleep(0.5)
                 if len(listener1.queue):
                     r = listener1.get()
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
@@ -174,6 +176,7 @@ class Forum:
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
+                time.sleep(0.5)
                 if all([
                         True if min_count is None else True if len(self.posts) >= min_count else False,
                         True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_at <= time_until else False,
@@ -226,10 +229,12 @@ class Post:
                     speed=1200 + int(200 * (random.random() - 0.5)),
                     count=1,
                     repeat_delay=0.5 + random.random(),
+                    blocking=True,
                 )
 
         def read_received():
             while not stop:
+                time.sleep(0.5)
                 if len(listener1.queue):
                     r = listener1.get()
                     time.sleep(0.5)
@@ -369,6 +374,7 @@ class Post:
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
+                time.sleep(0.5)
                 if all([
                         True if min_count is None else True if len(self.comments) >= min_count else False,
                 ]):
