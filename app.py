@@ -41,6 +41,8 @@ class dcard_crawler:
     def run_crawler(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
         used_posts = set()
         try:
+            self.browser.get('https://www.dcard.tw/f', referrer='https://www.google.com/')
+            time.sleep(20)
             for forum in forums:
                 if isinstance(forum, str): forum = dcard.Forum(alias=forum)
                 if self.do_forum_get:
@@ -128,6 +130,8 @@ class facebook_crawler:
     def run_crawler(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
         used_posts = set()
         try:
+            self.browser.get('https://www.facebook.com/', referrer='https://www.google.com/')
+            time.sleep(20)
             for page in pages:
                 if isinstance(page, str): page = facebook.Page(alias=page)
                 if self.do_page_get:
