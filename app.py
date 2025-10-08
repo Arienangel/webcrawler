@@ -28,14 +28,14 @@ class dcard_crawler:
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
-    def start_thread(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict, post_get_kwargs: dict, posts_db_path: str, comments_db_path: str):
+    def start_thread(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
         self.stop = False
         threading.Thread(target=self.run_crawler, args=[forums, forum_get_kwargs, post_get_kwargs]).start()
         while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
-            if len(self.queue_posts.queue):
-                self.write_posts_db(self.queue_posts.get(), posts_db_path)
-            if len(self.queue_comments.queue):
-                self.write_comments_db(self.queue_comments.get(), comments_db_path)
+            if posts_db_path:
+                if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
+            if comments_db_path:
+                if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
         return
 
     def run_crawler(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
@@ -117,14 +117,14 @@ class facebook_crawler:
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
-    def start_thread(self, pages: list[str | facebook.Page], page_get_kwargs: dict, post_get_kwargs: dict, posts_db_path: str, comments_db_path: str):
+    def start_thread(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
         self.stop = False
         threading.Thread(target=self.run_crawler, args=[pages, page_get_kwargs, post_get_kwargs]).start()
         while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
-            if len(self.queue_posts.queue):
-                self.write_posts_db(self.queue_posts.get(), posts_db_path)
-            if len(self.queue_comments.queue):
-                self.write_comments_db(self.queue_comments.get(), comments_db_path)
+            if posts_db_path:
+                if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
+            if comments_db_path:
+                if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
         return
 
     def run_crawler(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
@@ -206,14 +206,14 @@ class plurk_crawler:
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
-    def start_thread(self, forums: list[str | plurk.Search], search_get_kwargs: dict, post_get_kwargs: dict, posts_db_path: str, comments_db_path: str):
+    def start_thread(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
         self.stop = False
-        threading.Thread(target=self.run_crawler, args=[forums, search_get_kwargs, post_get_kwargs]).start()
+        threading.Thread(target=self.run_crawler, args=[searches, search_get_kwargs, post_get_kwargs]).start()
         while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
-            if len(self.queue_posts.queue):
-                self.write_posts_db(self.queue_posts.get(), posts_db_path)
-            if len(self.queue_comments.queue):
-                self.write_comments_db(self.queue_comments.get(), comments_db_path)
+            if posts_db_path:
+                if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
+            if comments_db_path:
+                if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
         return
 
     def run_crawler(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
@@ -293,14 +293,14 @@ class ptt_crawler:
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
-    def start_thread(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict, post_get_kwargs: dict, posts_db_path: str, comments_db_path: str):
+    def start_thread(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
         self.stop = False
         threading.Thread(target=self.run_crawler, args=[forums, forum_get_kwargs, post_get_kwargs]).start()
         while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
-            if len(self.queue_posts.queue):
-                self.write_posts_db(self.queue_posts.get(), posts_db_path)
-            if len(self.queue_comments.queue):
-                self.write_comments_db(self.queue_comments.get(), comments_db_path)
+            if posts_db_path:
+                if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
+            if comments_db_path:
+                if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
         return
 
     def run_crawler(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
