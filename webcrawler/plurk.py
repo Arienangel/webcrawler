@@ -54,6 +54,7 @@ class Search:
         def read_received():
             nonlocal stop
             while not stop:
+                time.sleep(0.5)
                 if len(response_queue.queue):
                     response = response_queue.get()
                     if response['users']:
@@ -148,6 +149,7 @@ class Search:
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
+                time.sleep(0.5)
                 if all([
                         True if min_count is None else True if len(self.posts) >= min_count else False,
                         True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time <= time_until else False,
@@ -208,6 +210,7 @@ class Post:
             nonlocal stop
             floor = 1
             while not stop:
+                time.sleep(0.5)
                 if len(response_queue.queue):
                     response = response_queue.get()
                     if response['users']:
@@ -283,6 +286,7 @@ class Post:
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
+                time.sleep(0.5)
                 if all([
                         True if min_count is None else True if len(self.comments) >= min_count else False,
                 ]):
