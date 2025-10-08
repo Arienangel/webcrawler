@@ -28,7 +28,7 @@ class Forum:
     def get(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30):
 
         def load_page():
-            browser.get(self.url, referrer='https://www.google.com/')
+            browser.get(self.url)
             self._logger.info(f'Get: {self.url}')
             time.sleep(8)
             while not stop:

@@ -166,8 +166,11 @@ class CDP:
 
     @property
     def page_source(self) -> str:
-        nodeId = self.get_received_by_id(self.send('DOM.getDocument'))['result']['root']['nodeId']
-        return self.get_received_by_id(self.send('DOM.getOuterHTML', nodeId=nodeId))['result']['outerHTML']
+        try:
+            nodeId = self.get_received_by_id(self.send('DOM.getDocument'))['result']['root']['nodeId']
+            return self.get_received_by_id(self.send('DOM.getOuterHTML', nodeId=nodeId))['result']['outerHTML']
+        except:
+            return ""
 
     def get(self, url: str, **params):
         self.send('Page.navigate', url=url, **params)
@@ -186,10 +189,12 @@ class CDP:
         start_idx = 0
         end_time = time.time() + timeout
         while time.time() < end_time:
-            for r in self.received[start_idx:]:
-                start_idx += 1
-                if r['id'] == id:
-                    return r
+            try:
+                r = self.received[start_idx]
+                if r['id'] == id: return r
+                else: start_idx += 1
+            except:
+                continue
         else:
             raise ValueError(f'{id = } not found')
 
@@ -226,7 +231,7 @@ class CDP:
                         listener(data)
                     except queue.ShutDown:
                         del self._listeners[q]
-                        self._logger.info(f'Remove network listener: {q.name}')
+                        self._logger.debug(f'Remove network listener: {q.name}')
             except:
                 if self._running:
                     continue
