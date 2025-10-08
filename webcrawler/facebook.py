@@ -48,11 +48,11 @@ class Page:
 
         def read_received():
             while not stop:
-                time.sleep(0.5)
+                time.sleep(0.01)
                 posts = []
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(2)
+                    time.sleep(0.1)
                     response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
                     posts = [json.loads(BeautifulSoup(response, features='html.parser').find('script', type='application/json', string=re.compile(r'"post_id"')).text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['user']['timeline_list_feed_units']['edges'][0]['node']]
                     self.id = int(posts[0]['comet_sections']['content']['story']['actors'][0]['id'])
@@ -60,7 +60,7 @@ class Page:
                     self.name = posts[0]['comet_sections']['content']['story']['actors'][0]['name']
                 elif len(listener2.queue):
                     r = listener2.get()
-                    time.sleep(1)
+                    time.sleep(0.1)
                     response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
                     L = response.split('\n')
                     posts = []
@@ -94,7 +94,7 @@ class Page:
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
-                time.sleep(0.5)
+                time.sleep(0.01)
                 if all([
                         True if min_count is None else True if len(self.posts) >= min_count else False,
                         True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time <= time_until else False,
@@ -148,10 +148,10 @@ class Post:
 
         def read_received():
             while not stop:
-                time.sleep(0.5)
+                time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(3)
+                    time.sleep(0.1)
                     response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
                     post = json.loads(BeautifulSoup(response, features='html.parser').find('script', type='application/json', string=re.compile(r'"post_id"')).text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['node']
                     if self.page.id != int(post['comet_sections']['content']['story']['actors'][0]['id']):
@@ -263,7 +263,7 @@ class Post:
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
-                time.sleep(0.5)
+                time.sleep(0.01)
                 if all([
                         True if min_count is None else True if len(self.comments) >= min_count else False,
                 ]):

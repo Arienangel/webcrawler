@@ -47,9 +47,10 @@ class Forum:
 
         def read_received():
             while not stop:
-                time.sleep(0.5)
+                time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
+                    time.sleep(0.1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     self.id = response['id']
                     self.name = response['name']
@@ -96,6 +97,7 @@ class Forum:
                     self.latest_post_pinned_at = dateutil.parser.parse(response['latestPostPinnedAt']) if response['latestPostPinnedAt'] in response else None
                 if len(listener2.queue):
                     r = listener2.get()
+                    time.sleep(0.1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     for widget in response['widgets']:
                         if 'forumList' in widget:
@@ -176,7 +178,7 @@ class Forum:
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
-                time.sleep(0.5)
+                time.sleep(0.01)
                 if all([
                         True if min_count is None else True if len(self.posts) >= min_count else False,
                         True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_at <= time_until else False,
@@ -234,10 +236,10 @@ class Post:
 
         def read_received():
             while not stop:
-                time.sleep(0.5)
+                time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(0.5)
+                    time.sleep(0.1)
                     response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features="html.parser")
                     response = json.loads(response.find('script', type="application/ld+json").text)
                     self.title = response['headline']
@@ -254,6 +256,7 @@ class Post:
                     self.share_count = response['interactionStatistic'][2]['userInteractionCount']
                 if len(listener2.queue):
                     r = listener2.get()
+                    time.sleep(0.1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     self.title = response['title']
                     self.excerpt = response['excerpt']
@@ -317,6 +320,7 @@ class Post:
                     self.activity_avatar = response['activityAvatar']
                 if len(listener3.queue):
                     r = listener3.get()
+                    time.sleep(0.1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     for c in response['items']:
                         try:
@@ -374,7 +378,7 @@ class Post:
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
-                time.sleep(0.5)
+                time.sleep(0.01)
                 if all([
                         True if min_count is None else True if len(self.comments) >= min_count else False,
                 ]):
