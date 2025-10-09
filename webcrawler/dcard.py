@@ -368,6 +368,9 @@ class Post:
                         except Exception as E:
                             self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
                             continue
+                    if len(self.comments) == 0:
+                        stop = True
+                        return
 
         stop = False
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)

@@ -274,6 +274,7 @@ class Post:
                         if len(self.comments):
                             next_id.put(self.comments[-1].id)
                         else:
+                            stop = True
                             return
                     except queue.ShutDown:
                         return
