@@ -3,6 +3,7 @@ import json
 import logging
 import queue
 import random
+import re
 import subprocess
 import threading
 import time
@@ -85,6 +86,7 @@ class ChromeProcess:
         window_size: list = [1280, 720],
         remote_debugging_host: str = '127.0.0.1',
         remote_debugging_port: int = 9222,
+        log_level: int = 3,
         chrome_options: list = [],
         use_exist: bool = False,
     ):
@@ -102,6 +104,8 @@ class ChromeProcess:
             self.options.append(f'--user-data-dir={user_data_dir}')
         if profile_directory:
             self.options.append(f'--profile-directory={profile_directory}')
+        if log_level:
+            self.options.append(f'--log-level={log_level}')
         for option in chrome_options:
             self.options.append(option)
         if not self.use_exist:
@@ -199,7 +203,7 @@ class CDP:
         else:
             raise ValueError(f'{id = } not found')
 
-    def add_listener(self, name: str, cdp_method: str = None, request_id: str = None, resource_type: str = None, url_exact: str = None, url_contain: str = None, status_code: int = None):
+    def add_listener(self, name: str, cdp_method: str = None, request_id: str = None, resource_type: str = None, url_exact: str = None, url_contain: str = None, url_regex: str = None, status_code: int = None):
 
         def listener(response: dict):
             check = []
@@ -210,6 +214,7 @@ class CDP:
                 if status_code: check.append(response['params']['response']['status'] == status_code)
                 if url_exact: check.append(response['params']['response']['url'] == url_exact)
                 if url_contain: check.append(url_contain in response['params']['response']['url'])
+                if url_regex: check.append(re.search(url_regex, response['params']['response']['url']))
             except:
                 return
             if all(check):
