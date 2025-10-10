@@ -25,13 +25,13 @@ class Forum:
     def url(self):
         return f'https://www.dcard.tw/f/{self.alias}?tab=latest'
 
-    def get(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30):
+    def get(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = threading.Event()):
 
         def load_page():
             browser.get(self.url)
             self._logger.info(f'Connect: {self.url}')
             time.sleep(8)
-            while not stop:
+            while not stop_event.is_set():
                 if 'https://challenges.cloudflare.com/turnstile' in browser.page_source:
                     continue
                 browser.scroll(
@@ -46,11 +46,11 @@ class Forum:
                 )
 
         def read_received():
-            while not stop:
+            while not stop_event.is_set():
                 time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     self.id = response['id']
                     self.name = response['name']
@@ -97,7 +97,7 @@ class Forum:
                     self.latest_post_pinned_at = dateutil.parser.parse(response['latestPostPinnedAt']) if response['latestPostPinnedAt'] in response else None
                 if len(listener2.queue):
                     r = listener2.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     for widget in response['widgets']:
                         if 'forumList' in widget:
@@ -170,7 +170,6 @@ class Forum:
                                 self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
                                 continue
 
-        stop = False
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/forums')
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/globalPaging/page')
         end_time = time.time() + timeout
@@ -184,10 +183,10 @@ class Forum:
                         True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_at <= time_until else False,
                 ]):
                     return
-                if stop:
+                if stop_event.is_set():
                     return
         finally:
-            stop = True
+            stop_event.set()
             listener1.shutdown()
             listener2.shutdown()
             self._logger.debug(f'#Posts: {len(self.posts)}')
@@ -212,14 +211,13 @@ class Post:
     def url(self):
         return f'https://www.dcard.tw/f/{self.forum.alias}/p/{self.id}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10):
+    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = threading.Event()):
 
         def load_page():
-            nonlocal stop
             browser.get(self.url)
             self._logger.info(f'Connect: {self.url}')
             time.sleep(8)
-            while not stop:
+            while not stop_event.is_set():
                 if 'https://challenges.cloudflare.com/turnstile' in browser.page_source:
                     continue
                 browser.cdp.send('Runtime.evaluate', expression="document.querySelector('div#comment-list-section button:nth-last-child(2)').click()")
@@ -235,11 +233,11 @@ class Post:
                 )
 
         def read_received():
-            while not stop:
+            while not stop_event.is_set():
                 time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features="html.parser")
                     response = json.loads(response.find('script', type="application/ld+json").text)
                     self.title = response['headline']
@@ -256,7 +254,7 @@ class Post:
                     self.share_count = response['interactionStatistic'][2]['userInteractionCount']
                 if len(listener2.queue):
                     r = listener2.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     self.title = response['title']
                     self.excerpt = response['excerpt']
@@ -320,7 +318,7 @@ class Post:
                     self.activity_avatar = response['activityAvatar']
                 if len(listener3.queue):
                     r = listener3.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     for c in response['items']:
                         try:
@@ -369,10 +367,9 @@ class Post:
                             self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
                             continue
                     if len(self.comments) == 0:
-                        stop = True
+                        stop_event.set()
                         return
 
-        stop = False
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain=f'https://www.dcard.tw/service/api/v2/posts/{self.id}?withPreview=true')
         listener3 = browser.cdp.add_listener(f'Listener 3: {self.__repr__()}', 'Network.responseReceived', url_contain=f'https://www.dcard.tw/service/api/v3/posts/{self.id}/comments?sort=oldest')
@@ -386,10 +383,10 @@ class Post:
                         True if min_count is None else True if len(self.comments) >= min_count else False,
                 ]):
                     return
-                if stop:
+                if stop_event.is_set():
                     return
         finally:
-            stop = True
+            stop_event.set()
             listener1.shutdown()
             listener2.shutdown()
             listener3.shutdown()

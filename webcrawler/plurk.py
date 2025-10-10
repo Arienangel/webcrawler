@@ -34,10 +34,10 @@ class Search:
     def url(self):
         return f'https://www.plurk.com/search?q={self.query}'
 
-    def get(self, session: requests.Session, min_count: int = 30, time_until: datetime.datetime = None, timeout: float = 35):
+    def get(self, session: requests.Session, min_count: int = 30, time_until: datetime.datetime = None, timeout: float = 35, stop_event: threading.Event = threading.Event()):
 
         def load_page():
-            while not stop:
+            while not stop_event.is_set():
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
                 self._logger.info(f'Connect: {self.api_url} {self.api_body}')
                 if response.headers['Content-Type'] != 'application/json':
@@ -52,8 +52,7 @@ class Search:
                     return
 
         def read_received():
-            nonlocal stop
-            while not stop:
+            while not stop_event.is_set():
                 time.sleep(0.01)
                 if len(response_queue.queue):
                     response = response_queue.get()
@@ -95,7 +94,7 @@ class Search:
                     for p in response['plurks']:
                         if len(self.posts):
                             if p['id'] == self.posts[-1].id:
-                                stop = True
+                                stop_event.set()
                                 return
                         try:
                             post = Post(p['id'])
@@ -141,7 +140,6 @@ class Search:
                     except queue.ShutDown:
                         return
 
-        stop = False
         end_time = time.time() + timeout
         response_queue = queue.Queue()
         next_id = queue.Queue()
@@ -155,10 +153,11 @@ class Search:
                         True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time <= time_until else False,
                 ]):
                     return
-                if stop:
+                if stop_event.is_set():
                     return
         finally:
-            stop = True
+            stop_event.set()
+            response_queue.shutdown(immediate=True)
             next_id.shutdown(immediate=True)
             self._logger.debug(f'#Posts: {len(self.posts)}')
 
@@ -189,10 +188,10 @@ class Post:
     def url(self):
         return f'https://www.plurk.com/p/{self.b36}'
 
-    def get(self, session: requests.Session, min_count: int = 30, timeout: float = 35):
+    def get(self, session: requests.Session, min_count: int = 30, timeout: float = 35, stop_event: threading.Event = threading.Event()):
 
         def load_page():
-            while not stop:
+            while not stop_event.is_set():
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
                 self._logger.info(f'Connect: {self.api_url} {self.api_body}')
                 if response.headers['Content-Type'] != 'application/json':
@@ -207,9 +206,8 @@ class Post:
                     return
 
         def read_received():
-            nonlocal stop
             floor = 1
-            while not stop:
+            while not stop_event.is_set():
                 time.sleep(0.01)
                 if len(response_queue.queue):
                     response = response_queue.get()
@@ -241,7 +239,7 @@ class Post:
                     for c in response['responses']:
                         if len(self.comments):
                             if c['id'] == self.comments[-1].id:
-                                stop = True
+                                stop_event.set()
                                 return
                         try:
                             comment = Comment(self, c['id'], floor)
@@ -274,12 +272,11 @@ class Post:
                         if len(self.comments):
                             next_id.put(self.comments[-1].id)
                         else:
-                            stop = True
+                            stop_event.set()
                             return
                     except queue.ShutDown:
                         return
 
-        stop = False
         end_time = time.time() + timeout
         response_queue = queue.Queue()
         next_id = queue.Queue()
@@ -292,10 +289,10 @@ class Post:
                         True if min_count is None else True if len(self.comments) >= min_count else False,
                 ]):
                     return
-                if stop:
+                if stop_event.is_set():
                     return
         finally:
-            stop = True
+            stop_event.set()
             next_id.shutdown(immediate=True)
             self._logger.debug(f'#Comments: {len(self.comments)}')
 
