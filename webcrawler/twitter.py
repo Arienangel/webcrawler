@@ -26,7 +26,7 @@ class User:
     def url(self):
         return f'https://x.com/{self.alias}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = threading.Event()):
+    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = threading.Event(), do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -93,7 +93,7 @@ class User:
 
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/UserTweets')
         end_time = time.time() + timeout
-        threading.Thread(target=load_page).start()
+        if do_navigate: threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
@@ -161,7 +161,7 @@ class Tweet:
     def url(self):
         return f'https://x.com/{self.user.alias}/status/{self.id}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = threading.Event()):
+    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = threading.Event(), do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -219,7 +219,7 @@ class Tweet:
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/TweetResultByRestId')
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/TweetDetail')
         end_time = time.time() + timeout
-        threading.Thread(target=load_page).start()
+        if do_navigate: threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:

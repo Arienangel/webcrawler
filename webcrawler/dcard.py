@@ -25,7 +25,7 @@ class Forum:
     def url(self):
         return f'https://www.dcard.tw/f/{self.alias}?tab=latest'
 
-    def get(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = threading.Event()):
+    def get(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = threading.Event(), do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -173,7 +173,7 @@ class Forum:
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/forums')
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/globalPaging/page')
         end_time = time.time() + timeout
-        threading.Thread(target=load_page).start()
+        if do_navigate: threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
@@ -211,7 +211,7 @@ class Post:
     def url(self):
         return f'https://www.dcard.tw/f/{self.forum.alias}/p/{self.id}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = threading.Event()):
+    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = threading.Event(), do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -374,7 +374,7 @@ class Post:
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain=f'https://www.dcard.tw/service/api/v2/posts/{self.id}?withPreview=true')
         listener3 = browser.cdp.add_listener(f'Listener 3: {self.__repr__()}', 'Network.responseReceived', url_contain=f'https://www.dcard.tw/service/api/v3/posts/{self.id}/comments?sort=oldest')
         end_time = time.time() + timeout
-        threading.Thread(target=load_page).start()
+        if do_navigate: threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:

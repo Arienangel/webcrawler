@@ -27,7 +27,7 @@ class Page:
     def url(self):
         return f'https://www.facebook.com/{self.id if self.id else self.alias}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = threading.Event()):
+    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = threading.Event(), do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -89,7 +89,7 @@ class Page:
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.facebook.com/api/graphql/')
         end_time = time.time() + timeout
-        threading.Thread(target=load_page).start()
+        if do_navigate: threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
@@ -114,7 +114,7 @@ class Post:
         self.page: Page = page
         self.author: Page = page
         self.id: int = id
-        self.pfbid: str = pfbid 
+        self.pfbid: str = pfbid
         self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
         self.title: str = None
         self.content: str = None
@@ -128,7 +128,7 @@ class Post:
     def url(self):
         return f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.id if self.id else self.pfbid}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = threading.Event()):
+    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = threading.Event(), do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -261,7 +261,7 @@ class Post:
 
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
         end_time = time.time() + timeout
-        threading.Thread(target=load_page).start()
+        if do_navigate: threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
