@@ -14,8 +14,8 @@ from .webdriver import ChromeProcess
 class Page:
 
     def __init__(self, id: int = None, alias: str = None):
-        self.id: int = id if id else None
-        self.alias: str = alias if alias else None
+        self.id: int = id
+        self.alias: str = alias
         self.name: str = None
         self.posts: list[Post] = []
         self._logger = logging.getLogger(self.__repr__())
@@ -27,13 +27,13 @@ class Page:
     def url(self):
         return f'https://www.facebook.com/{self.id if self.id else self.alias}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30):
+    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = threading.Event()):
 
         def load_page():
             browser.get(self.url)
             self._logger.info(f'Connect: {self.url}')
             time.sleep(5)
-            while not stop:
+            while not stop_event.is_set():
                 browser.cdp.send('Runtime.evaluate', expression='''document.querySelector('div[role="dialog"] i.x1b0d499.x1d69dk1').click()''')
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
@@ -47,12 +47,12 @@ class Page:
                 )
 
         def read_received():
-            while not stop:
+            while not stop_event.is_set():
                 time.sleep(0.01)
                 posts = []
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
                     posts = [json.loads(BeautifulSoup(response, features='html.parser').find('script', type='application/json', string=re.compile(r'"post_id"')).text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['user']['timeline_list_feed_units']['edges'][0]['node']]
                     self.id = int(posts[0]['comet_sections']['content']['story']['actors'][0]['id'])
@@ -60,7 +60,7 @@ class Page:
                     self.name = posts[0]['comet_sections']['content']['story']['actors'][0]['name']
                 elif len(listener2.queue):
                     r = listener2.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
                     L = response.split('\n')
                     posts = []
@@ -86,7 +86,6 @@ class Page:
                         self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
                         continue
 
-        stop = False
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.facebook.com/api/graphql/')
         end_time = time.time() + timeout
@@ -100,8 +99,10 @@ class Page:
                         True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time <= time_until else False,
                 ]):
                     return
+                if stop_event.is_set():
+                    return
         finally:
-            stop = True
+            stop_event.set()
             listener1.shutdown()
             listener2.shutdown()
             self._logger.debug(f'#Posts: {len(self.posts)}')
@@ -112,8 +113,8 @@ class Post:
     def __init__(self, page: Page = None, id: int = None, pfbid: str = None):
         self.page: Page = page
         self.author: Page = page
-        self.id: int = id if id else None
-        self.pfbid: str = pfbid if pfbid else None
+        self.id: int = id
+        self.pfbid: str = pfbid 
         self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
         self.title: str = None
         self.content: str = None
@@ -127,14 +128,13 @@ class Post:
     def url(self):
         return f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.id if self.id else self.pfbid}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10):
+    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = threading.Event()):
 
         def load_page():
-            nonlocal stop
             browser.get(self.url)
             self._logger.info(f'Connect: {self.url}')
             time.sleep(5)
-            while not stop:
+            while not stop_event.is_set():
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
                     y=browser.window_size[1] // 2 + int(10 * (random.random() - 0.5)),
@@ -147,11 +147,11 @@ class Post:
                 )
 
         def read_received():
-            while not stop:
+            while not stop_event.is_set():
                 time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
                     post = json.loads(BeautifulSoup(response, features='html.parser').find('script', type='application/json', string=re.compile(r'"post_id"')).text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['node']
                     if self.page.id != int(post['comet_sections']['content']['story']['actors'][0]['id']):
@@ -256,10 +256,9 @@ class Post:
                             self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
                             continue
                     if len(self.comments) == 0:
-                        stop = True
+                        stop_event.set()
                         return
 
-        stop = False
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
         end_time = time.time() + timeout
         threading.Thread(target=load_page).start()
@@ -271,8 +270,10 @@ class Post:
                         True if min_count is None else True if len(self.comments) >= min_count else False,
                 ]):
                     return
+                if stop_event.is_set():
+                    return
         finally:
-            stop = True
+            stop_event.set()
             listener1.shutdown()
             self._logger.debug(f'#Comments: {len(self.comments)}')
 

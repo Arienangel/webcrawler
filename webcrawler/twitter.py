@@ -26,13 +26,13 @@ class User:
     def url(self):
         return f'https://x.com/{self.alias}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30):
+    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = threading.Event()):
 
         def load_page():
             browser.get(self.url)
             self._logger.info(f'Connect: {self.url}')
             time.sleep(5)
-            while not stop:
+            while not stop_event.is_set():
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
                     y=browser.window_size[1] // 2 + int(10 * (random.random() - 0.5)),
@@ -44,12 +44,12 @@ class User:
                 )
 
         def read_received():
-            while not stop:
+            while not stop_event.is_set():
                 time.sleep(0.01)
                 tweets = []
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     if response['data']['user']['result']['timeline']['timeline']['instructions'][0]['type'] == 'TimelineClearCache': del response['data']['user']['result']['timeline']['timeline']['instructions'][0]
                     self._parse(response['data']['user']['result']['timeline']['timeline']['instructions'][0]['entry']['content']['itemContent']['tweet_results']['result']['core']['user_results']['result'])
@@ -91,7 +91,6 @@ class User:
                         self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
                         continue
 
-        stop = False
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/UserTweets')
         end_time = time.time() + timeout
         threading.Thread(target=load_page).start()
@@ -104,8 +103,10 @@ class User:
                         True if time_until is None else False if len(self.tweets) == 0 else True if self.tweets[-1].created_time <= time_until else False,
                 ]):
                     return
+                if stop_event.is_set():
+                    return
         finally:
-            stop = True
+            stop_event.set()
             listener1.shutdown()
             self._logger.debug(f'#Posts: {len(self.tweets)}')
 
@@ -160,14 +161,13 @@ class Tweet:
     def url(self):
         return f'https://x.com/{self.user.alias}/status/{self.id}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10):
+    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = threading.Event()):
 
         def load_page():
-            nonlocal stop
             browser.get(self.url)
             self._logger.info(f'Connect: {self.url}')
             time.sleep(5)
-            while not stop:
+            while not stop_event.is_set():
                 browser.scroll(
                     x=browser.window_size[0] // 2 + int(10 * (random.random() - 0.5)),
                     y=browser.window_size[1] // 2 + int(10 * (random.random() - 0.5)),
@@ -179,16 +179,16 @@ class Tweet:
                 )
 
         def read_received():
-            while not stop:
+            while not stop_event.is_set():
                 time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     self._parse(response['data']['tweetResult']['result'])
                 elif len(listener2.queue):
                     r = listener2.get()
-                    time.sleep(0.1)
+                    time.sleep(1)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     if response['data']['threaded_conversation_with_injections_v2']['instructions'][0]['type'] == 'TimelineClearCache': del response['data']['threaded_conversation_with_injections_v2']['instructions'][0]
                     comments = response['data']['threaded_conversation_with_injections_v2']['instructions'][0]['entries']
@@ -216,7 +216,6 @@ class Tweet:
                             self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
                             continue
 
-        stop = False
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/TweetResultByRestId')
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/TweetDetail')
         end_time = time.time() + timeout
@@ -229,8 +228,10 @@ class Tweet:
                         True if min_count is None else True if len(self.comments) >= min_count else False,
                 ]):
                     return
+                if stop_event.is_set():
+                    return
         finally:
-            stop = True
+            stop_event.set()
             listener1.shutdown()
             listener2.shutdown()
             self._logger.debug(f'#Comments: {len(self.comments)}')
