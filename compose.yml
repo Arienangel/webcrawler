@@ -1,0 +1,19 @@
+services:
+  webcrawler:
+    image: local/webcrawler:latest
+    build:
+      context: ./build
+      args:
+        PYTHON_VERSION: 3.14t
+        CHROME_VERSION: 141.0.7390.65-1
+    container_name: webcrawler
+    volumes:
+      - ./:/app
+      - ~/.Xauthority:/root/.Xauthority
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    working_dir: /app
+    environment:
+      DISPLAY: :0
+      LANG: zh_TW.UTF-8
+    network_mode: host
+    command: bash -c 'uv sync && uv run python app.py -f config.yaml'

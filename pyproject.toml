@@ -7,6 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
     "base36>=0.1.1",
     "beautifulsoup4>=4.14.2",
+    "python-dateutil>=2.9.0.post0",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
     "selenium>=4.36.0",
