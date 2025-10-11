@@ -11,9 +11,9 @@ webdriver:
     window_size: [1280, 720]
     remote_debugging_host: "127.0.0.1"
     remote_debugging_port:
-    service_kwargs:
+    service_kwargs: {}
     chrome_options: []
-    experimental_options:
+    experimental_options: {}
   chromeprocess:
     chrome_path: "chrome"
     user_data_dir:
@@ -23,7 +23,10 @@ webdriver:
     window_size: [1280, 720]
     remote_debugging_host: "127.0.0.1"
     remote_debugging_port:
-    chrome_options: []
+    log_level: 3
+    chrome_options:
+      - --lang=zh_TW.UTF-8
+      # - --no-sandbox
 
 webcrawler:
   dcard:
