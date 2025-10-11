@@ -790,6 +790,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "base36" },
     { name = "beautifulsoup4" },
+    { name = "python-dateutil" },
     { name = "pyyaml" },
     { name = "requests" },
     { name = "selenium" },
@@ -807,6 +808,7 @@ dev = [
 requires-dist = [
     { name = "base36", specifier = ">=0.1.1" },
     { name = "beautifulsoup4", specifier = ">=4.14.2" },
+    { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "selenium", specifier = ">=4.36.0" },
