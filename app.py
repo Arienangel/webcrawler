@@ -21,6 +21,7 @@ class dcard_crawler:
         self.do_post_get = do_post_get
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
+        self.used_posts = set()
 
     def exit(self):
         if self._stop_browser_atexit:
@@ -28,8 +29,13 @@ class dcard_crawler:
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
-    def start_thread(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
+    def start_thread(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
         self.stop_thread = False
+        if not get_repeated_posts:
+            with sqlite3.connect(posts_db_path) as db:
+                tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
+                for table in tables:
+                    self.used_posts.update({row[0] for row in db.execute(f'SELECT id from `{table}`;').fetchall()})
         threading.Thread(target=self.run_crawler, args=[forums, forum_get_kwargs, post_get_kwargs]).start()
         try:
             while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
@@ -42,7 +48,6 @@ class dcard_crawler:
             self.exit()
 
     def run_crawler(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
-        used_posts = set()
         try:
             self.browser.get('https://www.dcard.tw/f', referrer='https://www.google.com/')
             time.sleep(20)
@@ -58,10 +63,10 @@ class dcard_crawler:
                         continue
                 if self.do_post_get:
                     for post in forum.posts[::-1]:
-                        if post.id in used_posts:
+                        if post.id in self.used_posts:
                             continue
                         else:
-                            used_posts.add(post.id)
+                            self.used_posts.add(post.id)
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
@@ -119,9 +124,15 @@ class facebook_crawler:
             self.browser.stop()
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
+        self.used_posts = set()
 
-    def start_thread(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
+    def start_thread(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
         self.stop_thread = False
+        if not get_repeated_posts:
+            with sqlite3.connect(posts_db_path) as db:
+                tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
+                for table in tables:
+                    self.used_posts.update({row[0] for row in db.execute(f'SELECT id from `{table}`;').fetchall()})
         threading.Thread(target=self.run_crawler, args=[pages, page_get_kwargs, post_get_kwargs]).start()
         try:
             while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
@@ -134,7 +145,6 @@ class facebook_crawler:
             self.exit()
 
     def run_crawler(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
-        used_posts = set()
         try:
             self.browser.get('https://www.facebook.com/', referrer='https://www.google.com/')
             time.sleep(20)
@@ -150,10 +160,10 @@ class facebook_crawler:
                         continue
                 if self.do_post_get:
                     for post in page.posts[::-1]:
-                        if post.id in used_posts:
+                        if post.id in self.used_posts:
                             continue
                         else:
-                            used_posts.add(post.id)
+                            self.used_posts.add(post.id)
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
@@ -205,6 +215,7 @@ class plurk_crawler:
         self.do_post_get = do_post_get
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
+        self.used_posts = set()
 
     def exit(self):
         if self._stop_browser_atexit:
@@ -212,8 +223,13 @@ class plurk_crawler:
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
-    def start_thread(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
+    def start_thread(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
         self.stop_thread = False
+        if not get_repeated_posts:
+            with sqlite3.connect(posts_db_path) as db:
+                tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
+                for table in tables:
+                    self.used_posts.update({row[0] for row in db.execute(f'SELECT id from `{table}`;').fetchall()})
         threading.Thread(target=self.run_crawler, args=[searches, search_get_kwargs, post_get_kwargs]).start()
         try:
             while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
@@ -226,7 +242,6 @@ class plurk_crawler:
             self.exit()
 
     def run_crawler(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
-        used_posts = set()
         try:
             for search in searches:
                 if isinstance(search, str): search = plurk.Search(query=search)
@@ -240,10 +255,10 @@ class plurk_crawler:
                         continue
                 if self.do_post_get:
                     for post in search.posts[::-1]:
-                        if post.id in used_posts:
+                        if post.id in self.used_posts:
                             continue
                         else:
-                            used_posts.add(post.id)
+                            self.used_posts.add(post.id)
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
@@ -295,6 +310,7 @@ class ptt_crawler:
         self.do_post_get = do_post_get
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
+        self.used_posts = set()
 
     def exit(self):
         if self._stop_browser_atexit:
@@ -302,8 +318,13 @@ class ptt_crawler:
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
-    def start_thread(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
+    def start_thread(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
         self.stop_thread = False
+        if not get_repeated_posts:
+            with sqlite3.connect(posts_db_path) as db:
+                tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
+                for table in tables:
+                    self.used_posts.update({row[0] for row in db.execute(f'SELECT id from `{table}`;').fetchall()})
         threading.Thread(target=self.run_crawler, args=[forums, forum_get_kwargs, post_get_kwargs]).start()
         try:
             while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
@@ -316,7 +337,6 @@ class ptt_crawler:
             self.exit()
 
     def run_crawler(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
-        used_posts = set()
         try:
             for forum in forums:
                 if isinstance(forum, str): forum = ptt.Forum(name=forum)
@@ -330,10 +350,10 @@ class ptt_crawler:
                         continue
                 if self.do_post_get:
                     for post in forum.posts[::-1]:
-                        if post.id in used_posts:
+                        if post.id in self.used_posts:
                             continue
                         else:
-                            used_posts.add(post.id)
+                            self.used_posts.add(post.id)
                         try:
                             self._logger.info(f'Get {post.__repr__()}')
                             post.get(self.browser, **post_get_kwargs)
@@ -405,6 +425,7 @@ if __name__ == '__main__':
             config['webcrawler']['dcard']['post_get'],
             config['webcrawler']['dcard']['db']['posts'],
             config['webcrawler']['dcard']['db']['comments'],
+            config['webcrawler']['dcard']['get_repeat_posts'],
         ]))
         logger.info(f"Add dcard job: {config['webcrawler']['dcard']['forums']}")
     if config['webcrawler']['facebook']['enable']:
@@ -420,6 +441,7 @@ if __name__ == '__main__':
             config['webcrawler']['facebook']['post_get'],
             config['webcrawler']['facebook']['db']['posts'],
             config['webcrawler']['facebook']['db']['comments'],
+            config['webcrawler']['facebook']['get_repeat_posts'],
         ]))
         logger.info(f"Add facebook job: {config['webcrawler']['facebook']['pages']}")
     if config['webcrawler']['plurk']['enable']:
@@ -432,6 +454,7 @@ if __name__ == '__main__':
             config['webcrawler']['plurk']['post_get'],
             config['webcrawler']['plurk']['db']['posts'],
             config['webcrawler']['plurk']['db']['comments'],
+            config['webcrawler']['plurk']['get_repeat_posts'],
         ]))
         logger.info(f"Add plurk job: {config['webcrawler']['plurk']['searches']}")
     if config['webcrawler']['ptt']['enable']:
@@ -444,6 +467,7 @@ if __name__ == '__main__':
             config['webcrawler']['ptt']['post_get'],
             config['webcrawler']['ptt']['db']['posts'],
             config['webcrawler']['ptt']['db']['comments'],
+            config['webcrawler']['ptt']['get_repeat_posts'],
         ]))
         logger.info(f"Add ptt job: {config['webcrawler']['ptt']['forums']}")
     try:

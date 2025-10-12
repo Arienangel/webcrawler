@@ -33,6 +33,7 @@ webcrawler:
     enable: true
     do_forum_get: true
     do_post_get: true
+    get_repeat_posts: true
     forums:
       - "trans"
     forum_get:
@@ -53,6 +54,7 @@ webcrawler:
     enable: true
     do_page_get: true
     do_post_get: true
+    get_repeat_posts: true
     pages:
       - "tapcpr"
       - "TaiwanHotline"
@@ -74,6 +76,7 @@ webcrawler:
     enable: true
     do_search_get: true
     do_post_get: false
+    get_repeat_posts: true
     searches:
       - "跨性"
       - "跨跨"
@@ -92,6 +95,7 @@ webcrawler:
     enable: true
     do_forum_get: true
     do_post_get: true
+    get_repeat_posts: true
     forums:
       - "transgender"
     forum_get:
