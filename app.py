@@ -22,22 +22,24 @@ class dcard_crawler:
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
 
-    def __del__(self):
+    def exit(self):
         if self._stop_browser_atexit:
             self.browser.stop()
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
     def start_thread(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
-        self.stop = False
+        self.stop_thread = False
         threading.Thread(target=self.run_crawler, args=[forums, forum_get_kwargs, post_get_kwargs]).start()
-        while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
-            time.sleep(0.01)
-            if posts_db_path:
-                if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
-            if comments_db_path:
-                if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
-        return
+        try:
+            while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
+                time.sleep(0.01)
+                if posts_db_path:
+                    if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
+                if comments_db_path:
+                    if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
+        finally:
+            self.exit()
 
     def run_crawler(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
         used_posts = set()
@@ -72,7 +74,7 @@ class dcard_crawler:
                 else:
                     self.queue_posts.put(forum.posts[::-1])
         finally:
-            self.stop = True
+            self.stop_thread = True
 
     def write_posts_db(self, posts: list[dcard.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
@@ -112,22 +114,24 @@ class facebook_crawler:
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
 
-    def __del__(self):
+    def exit(self):
         if self._stop_browser_atexit:
             self.browser.stop()
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
     def start_thread(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
-        self.stop = False
+        self.stop_thread = False
         threading.Thread(target=self.run_crawler, args=[pages, page_get_kwargs, post_get_kwargs]).start()
-        while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
-            time.sleep(0.01)
-            if posts_db_path:
-                if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
-            if comments_db_path:
-                if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
-        return
+        try:
+            while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
+                time.sleep(0.01)
+                if posts_db_path:
+                    if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
+                if comments_db_path:
+                    if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
+        finally:
+            self.exit()
 
     def run_crawler(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
         used_posts = set()
@@ -162,7 +166,7 @@ class facebook_crawler:
                 else:
                     self.queue_posts.put(page.posts[::-1])
         finally:
-            self.stop = True
+            self.stop_thread = True
 
     def write_posts_db(self, posts: list[facebook.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
@@ -202,22 +206,24 @@ class plurk_crawler:
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
 
-    def __del__(self):
+    def exit(self):
         if self._stop_browser_atexit:
             self.browser.close()
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
     def start_thread(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
-        self.stop = False
+        self.stop_thread = False
         threading.Thread(target=self.run_crawler, args=[searches, search_get_kwargs, post_get_kwargs]).start()
-        while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
-            time.sleep(0.01)
-            if posts_db_path:
-                if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
-            if comments_db_path:
-                if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
-        return
+        try:
+            while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
+                time.sleep(0.01)
+                if posts_db_path:
+                    if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
+                if comments_db_path:
+                    if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
+        finally:
+            self.exit()
 
     def run_crawler(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
         used_posts = set()
@@ -250,7 +256,7 @@ class plurk_crawler:
                 else:
                     self.queue_posts.put(search.posts[::-1])
         finally:
-            self.stop = True
+            self.stop_thread = True
 
     def write_posts_db(self, posts: list[plurk.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
@@ -290,22 +296,24 @@ class ptt_crawler:
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
 
-    def __del__(self):
+    def exit(self):
         if self._stop_browser_atexit:
             self.browser.close()
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
     def start_thread(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = ''):
-        self.stop = False
+        self.stop_thread = False
         threading.Thread(target=self.run_crawler, args=[forums, forum_get_kwargs, post_get_kwargs]).start()
-        while (not self.stop) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
-            time.sleep(0.01)
-            if posts_db_path:
-                if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
-            if comments_db_path:
-                if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
-        return
+        try:
+            while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
+                time.sleep(0.01)
+                if posts_db_path:
+                    if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
+                if comments_db_path:
+                    if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
+        finally:
+            self.exit()
 
     def run_crawler(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
         used_posts = set()
@@ -338,7 +346,7 @@ class ptt_crawler:
                 else:
                     self.queue_posts.put(forum.posts[::-1])
         finally:
-            self.stop = True
+            self.stop_thread = True
 
     def write_posts_db(self, posts: list[ptt.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
@@ -381,7 +389,7 @@ if __name__ == '__main__':
         level=config['logging']['level'] or args.log_level,
     )
     logger = logging.getLogger('App')
-    logger.info(f'GIL enabled: {sys._is_gil_enabled()}')
+    logger.debug(f'GIL enabled: {sys._is_gil_enabled()}')
     logger.info(f'Config file: {args.f}')
     jobs = []
     if config['webcrawler']['dcard']['enable']:
