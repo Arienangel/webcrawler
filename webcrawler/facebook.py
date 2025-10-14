@@ -53,19 +53,26 @@ class Page:
                 if len(listener1.queue):
                     r = listener1.get()
                     time.sleep(1)
-                    response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
-                    posts = [json.loads(BeautifulSoup(response, features='html.parser').find('script', type='application/json', string=re.compile(r'"post_id"')).text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['user']['timeline_list_feed_units']['edges'][0]['node']]
-                    self.id = int(posts[0]['comet_sections']['content']['story']['actors'][0]['id'])
-                    self.alias = posts[0]['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1]
-                    self.name = posts[0]['comet_sections']['content']['story']['actors'][0]['name']
+                    response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
+                    for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
+                        try:
+                            posts = [json.loads(r.text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['user']['timeline_list_feed_units']['edges'][0]['node']]
+                            self.id = int(posts[0]['comet_sections']['content']['story']['actors'][0]['id'])
+                            self.alias = posts[0]['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1]
+                            self.name = posts[0]['comet_sections']['content']['story']['actors'][0]['name']
+                        except:
+                            pass
                 elif len(listener2.queue):
                     r = listener2.get()
                     time.sleep(1)
-                    response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
-                    L = response.split('\n')
-                    posts = []
-                    posts.append(json.loads(L[0])['data']['node']['timeline_list_feed_units']['edges'][0]['node'])
-                    posts.extend([json.loads(i)['data']['node'] for i in L[1:-1]])
+                    try:
+                        response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
+                        L = response.split('\n')
+                        posts = []
+                        posts.append(json.loads(L[0])['data']['node']['timeline_list_feed_units']['edges'][0]['node'])
+                        posts.extend([json.loads(i)['data']['node'] for i in L[1:-1]])
+                    except:
+                        pass
                 for p in posts:
                     try:
                         post = Post(self, id=int(p['comet_sections']['content']['story']['post_id']), pfbid=p['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1])
@@ -152,41 +159,45 @@ class Post:
                 if len(listener1.queue):
                     r = listener1.get()
                     time.sleep(1)
-                    response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
-                    post = json.loads(BeautifulSoup(response, features='html.parser').find('script', type='application/json', string=re.compile(r'"post_id"')).text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['node']
-                    if self.page.id != int(post['comet_sections']['content']['story']['actors'][0]['id']):
-                        self.page = Page(id=int(post['comet_sections']['content']['story']['actors'][0]['id']), alias=post['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1])
-                        self.page.name = post['comet_sections']['content']['story']['actors'][0]['name']
-                    self.id = int(post['comet_sections']['content']['story']['post_id'])
-                    self.pfbid = post['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1]
-                    self.content = post['comet_sections']['content']['story']['message']['text'] if post['comet_sections']['content']['story']['message'] else None
-                    self.title = post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else None
-                    self.created_time = datetime.datetime.fromtimestamp(post['comet_sections']['timestamp']['story']['creation_time'])
-                    self.reaction_count = post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comet_ufi_summary_and_actions_renderer']['feedback']['reaction_count']['count']
-                    if 'attachments' in post['comet_sections']['content']['story']:
-                        if 'all_subattachments' in post['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']:
-                            self.attachments = [media['url'] for media in post['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']['all_subattachments']['nodes']]
-                        else:
-                            self.attachments = [post['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']['media']['url']]
-                    else:
-                        self.attachments = []
-                    self.encrypted_tracking = post['comet_sections']['content']['story']['encrypted_tracking']
-                    self.sponsored_data = post['comet_sections']['content']['story']['sponsored_data']
-                    self.text_format_metadata = post['comet_sections']['content']['story']['text_format_metadata']
-                    self.ghl_mocked_encrypted_link = post['comet_sections']['content']['story']['ghl_mocked_encrypted_link']
-                    self.ghl_label_mocked_cta_button = post['comet_sections']['content']['story']['ghl_label_mocked_cta_button']
-                    self.target_group = post['comet_sections']['content']['story']['target_group']
-                    self.attached_story = post['comet_sections']['content']['story']['attached_story']
-                    self.copyright_violation_header = post['comet_sections']['copyright_violation_header']
-                    self.header = post['comet_sections']['header']
-                    self.aymt_footer = post['comet_sections']['aymt_footer']
-                    self.outer_footer = post['comet_sections']['outer_footer']
-                    self.footer = post['comet_sections']['footer']
-                    self.is_prod_eligible = post['comet_sections']['timestamp']['is_prod_eligible']
-                    self.override_url = post['comet_sections']['timestamp']['override_url']
-                    self.video_override_url = post['comet_sections']['timestamp']['video_override_url']
-                    self.unpublished_content_type = post['comet_sections']['timestamp']['story']['unpublished_content_type']
-                    self.ghl_label = post['comet_sections']['timestamp']['story']['ghl_label']
+                    response =  BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
+                    for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
+                        try:
+                            post = json.loads(r.text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['node']
+                            if self.page.id != int(post['comet_sections']['content']['story']['actors'][0]['id']):
+                                self.page = Page(id=int(post['comet_sections']['content']['story']['actors'][0]['id']), alias=post['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1])
+                                self.page.name = post['comet_sections']['content']['story']['actors'][0]['name']
+                            self.id = int(post['comet_sections']['content']['story']['post_id'])
+                            self.pfbid = post['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1]
+                            self.content = post['comet_sections']['content']['story']['message']['text'] if post['comet_sections']['content']['story']['message'] else None
+                            self.title = post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else None
+                            self.created_time = datetime.datetime.fromtimestamp(post['comet_sections']['timestamp']['story']['creation_time'])
+                            self.reaction_count = post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comet_ufi_summary_and_actions_renderer']['feedback']['reaction_count']['count']
+                            if 'attachments' in post['comet_sections']['content']['story']:
+                                if 'all_subattachments' in post['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']:
+                                    self.attachments = [media['url'] for media in post['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']['all_subattachments']['nodes']]
+                                else:
+                                    self.attachments = [post['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']['media']['url']]
+                            else:
+                                self.attachments = []
+                            self.encrypted_tracking = post['comet_sections']['content']['story']['encrypted_tracking']
+                            self.sponsored_data = post['comet_sections']['content']['story']['sponsored_data']
+                            self.text_format_metadata = post['comet_sections']['content']['story']['text_format_metadata']
+                            self.ghl_mocked_encrypted_link = post['comet_sections']['content']['story']['ghl_mocked_encrypted_link']
+                            self.ghl_label_mocked_cta_button = post['comet_sections']['content']['story']['ghl_label_mocked_cta_button']
+                            self.target_group = post['comet_sections']['content']['story']['target_group']
+                            self.attached_story = post['comet_sections']['content']['story']['attached_story']
+                            self.copyright_violation_header = post['comet_sections']['copyright_violation_header']
+                            self.header = post['comet_sections']['header']
+                            self.aymt_footer = post['comet_sections']['aymt_footer']
+                            self.outer_footer = post['comet_sections']['outer_footer']
+                            self.footer = post['comet_sections']['footer']
+                            self.is_prod_eligible = post['comet_sections']['timestamp']['is_prod_eligible']
+                            self.override_url = post['comet_sections']['timestamp']['override_url']
+                            self.video_override_url = post['comet_sections']['timestamp']['video_override_url']
+                            self.unpublished_content_type = post['comet_sections']['timestamp']['story']['unpublished_content_type']
+                            self.ghl_label = post['comet_sections']['timestamp']['story']['ghl_label']
+                        except:
+                            pass
                     for c in post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comment_list_renderer']['feedback']['comment_rendering_instance_for_feed_location']['comments']['edges']:
                         try:
                             comment = Comment(self.page, self, c['node']['legacy_fbid'])
