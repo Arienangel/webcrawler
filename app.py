@@ -30,6 +30,7 @@ class dcard_crawler:
         self.queue_comments.shutdown()
 
     def start_thread(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
+        logger.info('Start dcard crawler')
         self.stop_thread = False
         if not get_repeated_posts:
             with sqlite3.connect(posts_db_path) as db:
@@ -46,6 +47,7 @@ class dcard_crawler:
                     if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
         finally:
             self.exit()
+            logger.info('Finish dcard crawler')
 
     def run_crawler(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
         try:
@@ -118,6 +120,7 @@ class facebook_crawler:
         self.do_post_get = do_post_get
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
+        self.used_posts = set()
 
     def exit(self):
         if self._stop_browser_atexit:
@@ -127,6 +130,7 @@ class facebook_crawler:
         self.used_posts = set()
 
     def start_thread(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
+        logger.info('Start facebook crawler')
         self.stop_thread = False
         if not get_repeated_posts:
             with sqlite3.connect(posts_db_path) as db:
@@ -143,6 +147,7 @@ class facebook_crawler:
                     if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
         finally:
             self.exit()
+            logger.info('Finish facebook crawler')
 
     def run_crawler(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
         try:
@@ -225,6 +230,7 @@ class plurk_crawler:
 
     def start_thread(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
         self.stop_thread = False
+        logger.info('Start plurk crawler')
         if not get_repeated_posts:
             with sqlite3.connect(posts_db_path) as db:
                 tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
@@ -240,6 +246,7 @@ class plurk_crawler:
                     if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
         finally:
             self.exit()
+            logger.info('Finish plurk crawler')
 
     def run_crawler(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
         try:
@@ -320,6 +327,7 @@ class ptt_crawler:
 
     def start_thread(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
         self.stop_thread = False
+        logger.info('Start ptt crawler')
         if not get_repeated_posts:
             with sqlite3.connect(posts_db_path) as db:
                 tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
@@ -335,6 +343,7 @@ class ptt_crawler:
                     if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
         finally:
             self.exit()
+            logger.info('Finish ptt crawler')
 
     def run_crawler(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
         try:
