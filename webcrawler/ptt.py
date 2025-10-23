@@ -37,6 +37,7 @@ class Forum:
                     elif p.get('class')[0] == 'r-list-sep':
                         break
                     elif p.get('class')[0] == 'r-ent':
+                        if len(p.select('div.title a'))==0: continue
                         post = Post(self, p.select('div.title a')[0].get('href').rstrip('.html').split('/')[-1])
                         post.author.id = p.select('div.author')[0].text
                         post.title = p.select('div.title a')[0].text
