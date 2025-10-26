@@ -27,7 +27,7 @@ class Page:
     def url(self):
         return f'https://www.facebook.com/{self.id if self.id else self.alias}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = threading.Event(), do_navigate: bool = True):
+    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = None, do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -93,6 +93,7 @@ class Page:
                         self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
                         continue
 
+        if stop_event is None: stop_event = threading.Event()
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.facebook.com/api/graphql/')
         end_time = time.time() + timeout
@@ -135,7 +136,7 @@ class Post:
     def url(self):
         return f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.id if self.id else self.pfbid}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = threading.Event(), do_navigate: bool = True):
+    def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = None, do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -159,7 +160,7 @@ class Post:
                 if len(listener1.queue):
                     r = listener1.get()
                     time.sleep(1)
-                    response =  BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
+                    response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
                     for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
                         try:
                             post = json.loads(r.text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['node']
@@ -270,6 +271,7 @@ class Post:
                         stop_event.set()
                         return
 
+        if stop_event is None: stop_event = threading.Event()
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
         end_time = time.time() + timeout
         if do_navigate: threading.Thread(target=load_page).start()

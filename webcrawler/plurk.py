@@ -34,7 +34,7 @@ class Search:
     def url(self):
         return f'https://www.plurk.com/search?q={self.query}'
 
-    def get(self, session: requests.Session, min_count: int = 30, time_until: datetime.datetime = None, timeout: float = 35, stop_event: threading.Event = threading.Event()):
+    def get(self, session: requests.Session, min_count: int = 30, time_until: datetime.datetime = None, timeout: float = 35, stop_event: threading.Event = None):
 
         def load_page():
             while not stop_event.is_set():
@@ -140,6 +140,7 @@ class Search:
                     except queue.ShutDown:
                         return
 
+        if stop_event is None: stop_event = threading.Event()
         end_time = time.time() + timeout
         response_queue = queue.Queue()
         next_id = queue.Queue()
@@ -188,7 +189,7 @@ class Post:
     def url(self):
         return f'https://www.plurk.com/p/{self.b36}'
 
-    def get(self, session: requests.Session, min_count: int = 30, timeout: float = 35, stop_event: threading.Event = threading.Event()):
+    def get(self, session: requests.Session, min_count: int = 30, timeout: float = 35, stop_event: threading.Event = None):
 
         def load_page():
             while not stop_event.is_set():
@@ -277,6 +278,7 @@ class Post:
                     except queue.ShutDown:
                         return
 
+        if stop_event is None: stop_event = threading.Event()
         end_time = time.time() + timeout
         response_queue = queue.Queue()
         next_id = queue.Queue()
