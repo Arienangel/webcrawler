@@ -56,7 +56,10 @@ class Page:
                     response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
                     for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
                         try:
-                            posts = [json.loads(r.text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['user']['timeline_list_feed_units']['edges'][0]['node']]
+                            for i in json.loads(r.text)['require'][0][3][0]['__bbox']['require']:
+                                if i[0] == 'RelayPrefetchedStreamCache':
+                                    posts = [i[3][1]['__bbox']['result']['data']['user']['timeline_list_feed_units']['edges'][0]['node']]
+                                    break
                             self.id = int(posts[0]['comet_sections']['content']['story']['actors'][0]['id'])
                             self.alias = posts[0]['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1]
                             self.name = posts[0]['comet_sections']['content']['story']['actors'][0]['name']
@@ -67,15 +70,16 @@ class Page:
                     time.sleep(1)
                     try:
                         response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
-                        L = response.split('\n')
+                        L = [json.loads(i) for i in response.split('\n')]
                         posts = []
-                        posts.append(json.loads(L[0])['data']['node']['timeline_list_feed_units']['edges'][0]['node'])
-                        posts.extend([json.loads(i)['data']['node'] for i in L[1:-1]])
+                        if 'node' in L[0]: posts.append(L[0]['data']['node']['timeline_list_feed_units']['edges'][0]['node'])
+                        posts.extend([i['data']['node'] for i in L[1:] if 'node' in i['data']])
                     except:
                         pass
                 for p in posts:
                     try:
-                        post = Post(self, id=int(p['comet_sections']['content']['story']['post_id']), pfbid=p['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1])
+                        pfbid = p['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1] if 'posts' in p['comet_sections']['content']['story']['wwwURL'] else None
+                        post = Post(self, id=int(p['comet_sections']['content']['story']['post_id']), pfbid=pfbid)
                         post.content = p['comet_sections']['content']['story']['message']['text'] if p['comet_sections']['content']['story']['message'] else None
                         post.title = p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else None
                         post.created_time = datetime.datetime.fromtimestamp(p['comet_sections']['timestamp']['story']['creation_time'])
@@ -163,7 +167,12 @@ class Post:
                     response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
                     for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
                         try:
-                            post = json.loads(r.text)['require'][0][3][0]['__bbox']['require'][-7][3][1]['__bbox']['result']['data']['node']
+                            for i in json.loads(r.text)['require'][0][3][0]['__bbox']['require']:
+                                if i[0] == 'RelayPrefetchedStreamCache':
+                                    post = i[3][1]['__bbox']['result']['data']['node']
+                                    break
+                            else:
+                                continue
                             if self.page.id != int(post['comet_sections']['content']['story']['actors'][0]['id']):
                                 self.page = Page(id=int(post['comet_sections']['content']['story']['actors'][0]['id']), alias=post['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1])
                                 self.page.name = post['comet_sections']['content']['story']['actors'][0]['name']
