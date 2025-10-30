@@ -1,5 +1,6 @@
 import logging
 import queue
+import random
 import sqlite3
 import threading
 import time
@@ -422,63 +423,83 @@ if __name__ == '__main__':
     logger.info(f'Config file: {args.f}')
     jobs = []
     if config['webcrawler']['dcard']['enable']:
-        chromeprocess_kwargs = config['webdriver']['chromeprocess']
-        chromeprocess_kwargs.update(config['webcrawler']['dcard']['webdriver']['chromeprocess'])
-        jobs.append(threading.Thread(target=dcard_crawler(
-            chromeprocess_kwargs=chromeprocess_kwargs,
-            do_forum_get=config['webcrawler']['dcard']['do_forum_get'],
-            do_post_get=config['webcrawler']['dcard']['do_post_get'],
-        ).start_thread, args=[
-            config['webcrawler']['dcard']['forums'],
-            config['webcrawler']['dcard']['forum_get'],
-            config['webcrawler']['dcard']['post_get'],
-            config['webcrawler']['dcard']['db']['posts'],
-            config['webcrawler']['dcard']['db']['comments'],
-            config['webcrawler']['dcard']['get_repeat_posts'],
-        ]))
-        logger.info(f"Add dcard job: {config['webcrawler']['dcard']['forums']}")
+        try:
+            forums=config['webcrawler']['dcard']['forums']
+            random.shuffle(forums)
+            chromeprocess_kwargs = config['webdriver']['chromeprocess']
+            chromeprocess_kwargs.update(config['webcrawler']['dcard']['webdriver']['chromeprocess'])
+            jobs.append(threading.Thread(target=dcard_crawler(
+                chromeprocess_kwargs=chromeprocess_kwargs,
+                do_forum_get=config['webcrawler']['dcard']['do_forum_get'],
+                do_post_get=config['webcrawler']['dcard']['do_post_get'],
+            ).start_thread, args=[
+                forums,
+                config['webcrawler']['dcard']['forum_get'],
+                config['webcrawler']['dcard']['post_get'],
+                config['webcrawler']['dcard']['db']['posts'],
+                config['webcrawler']['dcard']['db']['comments'],
+                config['webcrawler']['dcard']['get_repeat_posts'],
+            ]))
+            logger.info(f"Add dcard job: {forums}")
+        except Exception as E:
+            logger.warning(f'Add dcard job failed: {type(E)}:{E.args}')
     if config['webcrawler']['facebook']['enable']:
-        chromeprocess_kwargs = config['webdriver']['chromeprocess']
-        chromeprocess_kwargs.update(config['webcrawler']['facebook']['webdriver']['chromeprocess'])
-        jobs.append(threading.Thread(target=facebook_crawler(
-            chromeprocess_kwargs=chromeprocess_kwargs,
-            do_page_get=config['webcrawler']['facebook']['do_page_get'],
-            do_post_get=config['webcrawler']['facebook']['do_post_get'],
-        ).start_thread, args=[
-            config['webcrawler']['facebook']['pages'],
-            config['webcrawler']['facebook']['page_get'],
-            config['webcrawler']['facebook']['post_get'],
-            config['webcrawler']['facebook']['db']['posts'],
-            config['webcrawler']['facebook']['db']['comments'],
-            config['webcrawler']['facebook']['get_repeat_posts'],
-        ]))
-        logger.info(f"Add facebook job: {config['webcrawler']['facebook']['pages']}")
+        try:
+            pages=config['webcrawler']['facebook']['pages']
+            random.shuffle(pages)
+            chromeprocess_kwargs = config['webdriver']['chromeprocess']
+            chromeprocess_kwargs.update(config['webcrawler']['facebook']['webdriver']['chromeprocess'])
+            jobs.append(threading.Thread(target=facebook_crawler(
+                chromeprocess_kwargs=chromeprocess_kwargs,
+                do_page_get=config['webcrawler']['facebook']['do_page_get'],
+                do_post_get=config['webcrawler']['facebook']['do_post_get'],
+            ).start_thread, args=[
+                pages,
+                config['webcrawler']['facebook']['page_get'],
+                config['webcrawler']['facebook']['post_get'],
+                config['webcrawler']['facebook']['db']['posts'],
+                config['webcrawler']['facebook']['db']['comments'],
+                config['webcrawler']['facebook']['get_repeat_posts'],
+            ]))
+            logger.info(f"Add facebook job: {pages}")
+        except Exception as E:
+            logger.warning(f'Add facebook job failed: {type(E)}:{E.args}')
     if config['webcrawler']['plurk']['enable']:
-        jobs.append(threading.Thread(target=plurk_crawler(
-            do_search_get=config['webcrawler']['plurk']['do_search_get'],
-            do_post_get=config['webcrawler']['plurk']['do_post_get'],
-        ).start_thread, args=[
-            config['webcrawler']['plurk']['searches'],
-            config['webcrawler']['plurk']['search_get'],
-            config['webcrawler']['plurk']['post_get'],
-            config['webcrawler']['plurk']['db']['posts'],
-            config['webcrawler']['plurk']['db']['comments'],
-            config['webcrawler']['plurk']['get_repeat_posts'],
-        ]))
-        logger.info(f"Add plurk job: {config['webcrawler']['plurk']['searches']}")
+        try:
+            searches=config['webcrawler']['plurk']['searches']
+            random.shuffle(searches)
+            jobs.append(threading.Thread(target=plurk_crawler(
+                do_search_get=config['webcrawler']['plurk']['do_search_get'],
+                do_post_get=config['webcrawler']['plurk']['do_post_get'],
+            ).start_thread, args=[
+                searches,
+                config['webcrawler']['plurk']['search_get'],
+                config['webcrawler']['plurk']['post_get'],
+                config['webcrawler']['plurk']['db']['posts'],
+                config['webcrawler']['plurk']['db']['comments'],
+                config['webcrawler']['plurk']['get_repeat_posts'],
+            ]))
+            logger.info(f"Add plurk job: {searches}")
+        except Exception as E:
+            logger.warning(f'Add plurk job failed: {type(E)}:{E.args}')
     if config['webcrawler']['ptt']['enable']:
-        jobs.append(threading.Thread(target=ptt_crawler(
-            do_forum_get=config['webcrawler']['ptt']['do_forum_get'],
-            do_post_get=config['webcrawler']['ptt']['do_post_get'],
-        ).start_thread, args=[
-            config['webcrawler']['ptt']['forums'],
-            config['webcrawler']['ptt']['forum_get'],
-            config['webcrawler']['ptt']['post_get'],
-            config['webcrawler']['ptt']['db']['posts'],
-            config['webcrawler']['ptt']['db']['comments'],
-            config['webcrawler']['ptt']['get_repeat_posts'],
-        ]))
-        logger.info(f"Add ptt job: {config['webcrawler']['ptt']['forums']}")
+        try:
+            forums=config['webcrawler']['ptt']['forums']
+            random.shuffle(forums)
+            jobs.append(threading.Thread(target=ptt_crawler(
+                do_forum_get=config['webcrawler']['ptt']['do_forum_get'],
+                do_post_get=config['webcrawler']['ptt']['do_post_get'],
+            ).start_thread, args=[
+                forums,
+                config['webcrawler']['ptt']['forum_get'],
+                config['webcrawler']['ptt']['post_get'],
+                config['webcrawler']['ptt']['db']['posts'],
+                config['webcrawler']['ptt']['db']['comments'],
+                config['webcrawler']['ptt']['get_repeat_posts'],
+            ]))
+            logger.info(f"Add ptt job: {forums}")
+        except Exception as E:
+            logger.warning(f'Add ptt job failed: {type(E)}:{E.args}')
     try:
         [job.start() for job in jobs]
         [job.join() for job in jobs]

@@ -52,7 +52,7 @@ class Page:
                 posts = []
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(1)
+                    time.sleep(2)
                     response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
                     for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
                         try:
@@ -67,7 +67,7 @@ class Page:
                             pass
                 elif len(listener2.queue):
                     r = listener2.get()
-                    time.sleep(1)
+                    time.sleep(2)
                     try:
                         response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
                         L = [json.loads(i) for i in response.split('\n')]
@@ -163,7 +163,7 @@ class Post:
                 time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(1)
+                    time.sleep(2)
                     response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
                     for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
                         try:

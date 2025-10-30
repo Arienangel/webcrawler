@@ -189,7 +189,7 @@ class CDP:
         self.websocket.send(payload)
         return id
 
-    def get_received_by_id(self, id: int, timeout=2):
+    def get_received_by_id(self, id: int, timeout=5):
         start_idx = 0
         end_time = time.time() + timeout
         while time.time() < end_time:
