@@ -41,9 +41,9 @@ class Search:
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
                 self._logger.info(f'Connect: {self.api_url} {self.api_body}')
                 if response.headers['Content-Type'] != 'application/json':
-                    self._logger.warning(f'Not a json file: {self.api_url}')
-                    time.sleep(16)
-                    continue
+                    self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
+                    stop_event.set()
+                    return
                 response_queue.put(response.json())
                 time.sleep(16)
                 try:
@@ -196,9 +196,9 @@ class Post:
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
                 self._logger.info(f'Connect: {self.api_url} {self.api_body}')
                 if response.headers['Content-Type'] != 'application/json':
-                    self._logger.warning(f'Not a json file: {self.api_url}')
-                    time.sleep(16)
-                    continue
+                    self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
+                    stop_event.set()
+                    return
                 response_queue.put(response.json())
                 time.sleep(16)
                 try:
