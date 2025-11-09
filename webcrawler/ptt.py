@@ -4,6 +4,7 @@ import re
 import time
 
 import dateutil
+import pytz
 import requests
 from bs4 import BeautifulSoup
 
@@ -37,7 +38,7 @@ class Forum:
                     elif p.get('class')[0] == 'r-list-sep':
                         break
                     elif p.get('class')[0] == 'r-ent':
-                        if len(p.select('div.title a'))==0: continue
+                        if len(p.select('div.title a')) == 0: continue
                         post = Post(self, p.select('div.title a')[0].get('href').rstrip('.html').split('/')[-1])
                         post.author.id = p.select('div.author')[0].text
                         post.title = p.select('div.title a')[0].text
@@ -74,7 +75,7 @@ class Post:
     def __init__(self, forum: Forum = None, id: str = ''):
         self.forum: Forum = forum
         self.id: str = id
-        self.time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
         self.author: User = User()
         self.title: str = ''
         self.content: str = ''
@@ -94,9 +95,9 @@ class Post:
         self._logger.info(f'Connect: {self.url}')
         header = response.select('div#main-content > div.article-metaline')
         self.author.id, self.author.name = header[0].select('span.article-meta-value')[0].text.split(' ', maxsplit=1)
-        self.author.name=self.author.name[1:-1]
+        self.author.name = self.author.name[1:-1]
         self.title = header[1].select('span.article-meta-value')[0].text
-        self.time = dateutil.parser.parse(header[2].select('span.article-meta-value')[0].text)
+        self.time = dateutil.parser.parse(header[2].select('span.article-meta-value')[0].text + ' +08:00')
         text = response.select('div#main-content')[0].text
         self.content = text.split('\n', maxsplit=1)[1].split('\n\n--\n※ 發信站: 批踢踢實業坊(ptt.cc)', maxsplit=1)[0]
         location = re.search(r'※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自: (.+) \((.+)\)\s※ 文章網址', text)
@@ -111,7 +112,7 @@ class Post:
                 comment.content = c.select('span.push-content')[0].text.lstrip(': ')
                 time = c.select('span.push-ipdatetime')[0].text.strip()
                 if int(time[:2]) < month: year += 1
-                comment.time = dateutil.parser.parse(f'{year}/{time}')
+                comment.time = dateutil.parser.parse(f'{year}/{time} +08:00')
                 month = comment.time.year
                 self.comments.append(comment)
                 self._logger.debug(f'Extract comment: {comment.__repr__()}')
@@ -128,7 +129,7 @@ class Comment:
         self.forum: Forum = forum
         self.post: Post = post
         self.floor: int = floor
-        self.time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
         self.author: User = User()
         self.content: str = ''
         self.reaction: str = ''

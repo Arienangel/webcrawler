@@ -5,6 +5,7 @@ logging:
 notify:
   enable: false
   config: apprise.yaml
+  timezone: Asia/Taipei
 
 webdriver:
   chromedriver:

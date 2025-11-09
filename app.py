@@ -5,6 +5,7 @@ import sqlite3
 import threading
 import time
 
+import pytz
 import requests
 import yaml
 
@@ -15,12 +16,13 @@ from webcrawler.webdriver import ChromeProcess
 class dcard_crawler:
     _logger = logging.getLogger('Dcard crawler')
 
-    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_forum_get: bool = True, do_post_get: bool = True, notifier: Notifier = None):
+    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_forum_get: bool = True, do_post_get: bool = True, notifier: Notifier = None, notify_tz=pytz.UTC):
         self._stop_browser_atexit = False if browser else True
         self.browser = browser or ChromeProcess(**chromeprocess_kwargs)
         self.do_forum_get = do_forum_get
         self.do_post_get = do_post_get
         self.notifier = notifier
+        self.notify_tz = notify_tz
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
         self.used_posts = set()
@@ -46,7 +48,7 @@ class dcard_crawler:
                 if len(self.queue_posts.queue):
                     posts = self.queue_posts.get()
                     if posts_db_path: self.write_posts_db(posts, posts_db_path)
-                    if self.notifier: self.notify(posts)
+                    if self.notifier: self.notify(posts, tz=self.notify_tz)
                 if len(self.queue_comments.queue):
                     comments = self.queue_comments.get()
                     if comments_db_path: self.write_comments_db(comments, comments_db_path)
@@ -88,9 +90,9 @@ class dcard_crawler:
         finally:
             self.stop_thread = True
 
-    def notify(self, posts: list[dcard.Post]):
+    def notify(self, posts: list[dcard.Post], tz=pytz.UTC):
         for post in posts:
-            self.notifier.send(tag=['default', 'dcard', f'dcard/{post.forum.alias}'], title=f'Dcard: {post.forum.name}', body=f'{post.author.school} {post.author.department}\n---\n{post.title}\n{post.content}\n---\n{post.created_time}\n{post.url}')
+            self.notifier.send(tag=['default', 'dcard', f'dcard/{post.forum.alias}'], title=f'[Dcard] {post.forum.name}', body=f'{post.author.school} {post.author.department}\n---\n{post.title}\n{post.content}\n---\n{post.created_time.astimezone(tz).strftime("%Y/%m/%d %H:%M:%S %:z")}\n{post.url}')
 
     def write_posts_db(self, posts: list[dcard.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
@@ -122,12 +124,13 @@ class dcard_crawler:
 class facebook_crawler:
     _logger = logging.getLogger('Facebook crawler')
 
-    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_page_get: bool = True, do_post_get: bool = True, notifier: Notifier = None):
+    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_page_get: bool = True, do_post_get: bool = True, notifier: Notifier = None, notify_tz=pytz.UTC):
         self._stop_browser_atexit = False if browser else True
         self.browser = browser or ChromeProcess(**chromeprocess_kwargs)
         self.do_page_get = do_page_get
         self.do_post_get = do_post_get
         self.notifier = notifier
+        self.notify_tz = notify_tz
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
         self.used_posts = set()
@@ -154,7 +157,7 @@ class facebook_crawler:
                 if len(self.queue_posts.queue):
                     posts = self.queue_posts.get()
                     if posts_db_path: self.write_posts_db(posts, posts_db_path)
-                    if self.notifier: self.notify(posts)
+                    if self.notifier: self.notify(posts, tz=self.notify_tz)
                 if len(self.queue_comments.queue):
                     comments = self.queue_comments.get()
                     if comments_db_path: self.write_comments_db(comments, comments_db_path)
@@ -196,9 +199,9 @@ class facebook_crawler:
         finally:
             self.stop_thread = True
 
-    def notify(self, posts: list[facebook.Post]):
+    def notify(self, posts: list[facebook.Post], tz=pytz.UTC):
         for post in posts:
-            self.notifier.send(tag=['default', 'facebook', f'facebook/{post.page.id}', f'facebook/{post.page.alias}'], title=f'Facebook: {post.page.name}', body=f'{post.title}\n{post.content}\n---\n{post.created_time}\n{post.url}')
+            self.notifier.send(tag=['default', 'facebook', f'facebook/{post.page.id}', f'facebook/{post.page.alias}'], title=f'[Facebook] {post.page.name}', body=f'{post.title}\n{post.content}\n---\n{post.created_time.astimezone(tz).strftime("%Y/%m/%d %H:%M:%S %:z")}\n{post.url}')
 
     def write_posts_db(self, posts: list[facebook.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
@@ -230,12 +233,13 @@ class facebook_crawler:
 class plurk_crawler:
     _logger = logging.getLogger('Plurk crawler')
 
-    def __init__(self, browser: requests.Session = None, do_search_get: bool = True, do_post_get: bool = False, notifier: Notifier = None):
+    def __init__(self, browser: requests.Session = None, do_search_get: bool = True, do_post_get: bool = False, notifier: Notifier = None, notify_tz=pytz.UTC):
         self._stop_browser_atexit = False if browser else True
         self.browser = browser or requests.Session()
         self.do_search_get = do_search_get
         self.do_post_get = do_post_get
         self.notifier = notifier
+        self.notify_tz = notify_tz
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
         self.used_posts = set()
@@ -261,7 +265,7 @@ class plurk_crawler:
                 if len(self.queue_posts.queue):
                     posts = self.queue_posts.get()
                     if posts_db_path: self.write_posts_db(posts, posts_db_path)
-                    if self.notifier: self.notify(posts)
+                    if self.notifier: self.notify(posts, tz=self.notify_tz)
                 if len(self.queue_comments.queue):
                     comments = self.queue_comments.get()
                     if comments_db_path: self.write_comments_db(comments, comments_db_path)
@@ -301,9 +305,9 @@ class plurk_crawler:
         finally:
             self.stop_thread = True
 
-    def notify(self, posts: list[plurk.Post]):
+    def notify(self, posts: list[plurk.Post], tz=pytz.UTC):
         for post in posts:
-            self.notifier.send(tag=['default', 'plurk', f'plurk/{post.query}'], title='Plurk', body=f'{post.author.display_name}\n---\n{post.content_raw}\n---\n{post.created_time}\n{post.url}')
+            self.notifier.send(tag=['default', 'plurk', f'plurk/{post.query}'], title=f'[Plurk] {post.query}', body=f'{post.author.display_name}\n---\n{post.content_raw}\n---\n{post.created_time.astimezone(tz).strftime("%Y/%m/%d %H:%M:%S %:z")}\n{post.url}')
 
     def write_posts_db(self, posts: list[plurk.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
@@ -335,12 +339,13 @@ class plurk_crawler:
 class ptt_crawler:
     _logger = logging.getLogger('PTT crawler')
 
-    def __init__(self, browser: requests.Session = None, do_forum_get: bool = True, do_post_get: bool = True, notifier: Notifier = None):
+    def __init__(self, browser: requests.Session = None, do_forum_get: bool = True, do_post_get: bool = True, notifier: Notifier = None, notify_tz=pytz.UTC):
         self._stop_browser_atexit = False if browser else True
         self.browser = browser or requests.Session()
         self.do_forum_get = do_forum_get
         self.do_post_get = do_post_get
         self.notifier = notifier
+        self.notify_tz = notify_tz
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
         self.used_posts = set()
@@ -366,7 +371,7 @@ class ptt_crawler:
                 if len(self.queue_posts.queue):
                     posts = self.queue_posts.get()
                     if posts_db_path: self.write_posts_db(posts, posts_db_path)
-                    if self.notifier: self.notify(posts)
+                    if self.notifier: self.notify(posts, tz=self.notify_tz)
                 if len(self.queue_comments.queue):
                     comments = self.queue_comments.get()
                     if comments_db_path: self.write_comments_db(comments, comments_db_path)
@@ -406,9 +411,9 @@ class ptt_crawler:
         finally:
             self.stop_thread = True
 
-    def notify(self, posts: list[ptt.Post]):
+    def notify(self, posts: list[ptt.Post], tz=pytz.UTC):
         for post in posts:
-            self.notifier.send(tag=['default', 'ptt', f'ptt/{post.forum.name}'], title=f'PTT: {post.forum.name}', body=f'{post.author.id} ({post.author.name})\n---\n{post.title}\n{post.content}\n---\n{post.time}\n{post.url}')
+            self.notifier.send(tag=['default', 'ptt', f'ptt/{post.forum.name}'], title=f'[PTT] {post.forum.name}', body=f'{post.author.id} ({post.author.name})\n---\n{post.title}\n{post.content}\n---\n{post.time.astimezone(tz).strftime("%Y/%m/%d %H:%M:%S %:z")}\n{post.url}')
 
     def write_posts_db(self, posts: list[ptt.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
@@ -440,13 +445,13 @@ class ptt_crawler:
 class Notifier:
     _logger = logging.getLogger('Notifier')
 
-    def __init__(self):
+    def __init__(self, config_file: str):
         import apprise
         self.apobj = apprise.Apprise()
         self.config = apprise.AppriseConfig()
-        self.config.add(config['notify']['config'])
+        self.config.add(config_file)
         self.apobj.add(self.config)
-        self._logger.info(f"Apprise config file: {config['notify']['config']}")
+        self._logger.info(f"Apprise config file: {config_file}")
 
     def send(self, **kwargs):
         try:
@@ -471,7 +476,9 @@ if __name__ == '__main__':
     logger = logging.getLogger('App')
     logger.debug(f'GIL enabled: {sys._is_gil_enabled()}')
     logger.info(f'Config file: {args.f}')
-    if config['notify']['enable']: notifier = Notifier()
+    if config['notify']['enable']:
+        notifier = Notifier(config['notify']['config'])
+        notify_tz = pytz.timezone(config['notify']['timezone'])
     jobs = []
     if config['webcrawler']['dcard']['enable']:
         try:
@@ -484,6 +491,7 @@ if __name__ == '__main__':
                 do_forum_get=config['webcrawler']['dcard']['do_forum_get'],
                 do_post_get=config['webcrawler']['dcard']['do_post_get'],
                 notifier=notifier if (config['notify']['enable'] and config['webcrawler']['dcard']['notify']['enable']) else None,
+                notify_tz=notify_tz,
             ).start_thread, args=[
                 forums,
                 config['webcrawler']['dcard']['forum_get'],
@@ -506,6 +514,7 @@ if __name__ == '__main__':
                 do_page_get=config['webcrawler']['facebook']['do_page_get'],
                 do_post_get=config['webcrawler']['facebook']['do_post_get'],
                 notifier=notifier if (config['notify']['enable'] and config['webcrawler']['facebook']['notify']['enable']) else None,
+                notify_tz=notify_tz,
             ).start_thread, args=[
                 pages,
                 config['webcrawler']['facebook']['page_get'],
@@ -525,6 +534,7 @@ if __name__ == '__main__':
                 do_search_get=config['webcrawler']['plurk']['do_search_get'],
                 do_post_get=config['webcrawler']['plurk']['do_post_get'],
                 notifier=notifier if (config['notify']['enable'] and config['webcrawler']['plurk']['notify']['enable']) else None,
+                notify_tz=notify_tz,
             ).start_thread, args=[
                 searches,
                 config['webcrawler']['plurk']['search_get'],
@@ -544,6 +554,7 @@ if __name__ == '__main__':
                 do_forum_get=config['webcrawler']['ptt']['do_forum_get'],
                 do_post_get=config['webcrawler']['ptt']['do_post_get'],
                 notifier=notifier if (config['notify']['enable'] and config['webcrawler']['ptt']['notify']['enable']) else None,
+                notify_tz=notify_tz,
             ).start_thread, args=[
                 forums,
                 config['webcrawler']['ptt']['forum_get'],

@@ -6,6 +6,7 @@ import threading
 import time
 
 import dateutil
+import pytz
 from bs4 import BeautifulSoup
 
 from .webdriver import ChromeProcess
@@ -26,7 +27,7 @@ class Forum:
     def url(self):
         return f'https://www.dcard.tw/f/{self.alias}?tab=latest'
 
-    def get(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = None, do_navigate: bool = True):
+    def get(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime | str = None, timeout: float = 30, stop_event: threading.Event = None, do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -178,6 +179,7 @@ class Forum:
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/forums')
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/globalPaging/page')
         end_time = time.time() + timeout
+        if isinstance(time_until, str): time_until = dateutil.parser.parse(time_until)
         if do_navigate: threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
         try:
@@ -185,7 +187,7 @@ class Forum:
                 time.sleep(0.01)
                 if all([
                         True if min_count is None else True if len(self.posts) >= min_count else False,
-                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_at <= time_until else False,
+                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time.timestamp() <= time_until.timestamp() else False,
                 ]):
                     return
                 if stop_event.is_set():
@@ -202,7 +204,7 @@ class Post:
     def __init__(self, forum: Forum = None, id: int = None):
         self.forum: Forum = forum
         self.id: int = id
-        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
         self.author: User = User()
         self.title: str = ''
         self.content: str = ''
@@ -412,7 +414,7 @@ class Comment:
         self.forum: Forum = forum
         self.post: Post = post
         self.floor: int = floor
-        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
         self.author: User = User()
         self.content: str = ''
         self._logger = logging.getLogger(self.__repr__())

@@ -6,6 +6,7 @@ import time
 
 import base36
 import dateutil
+import pytz
 import requests
 
 
@@ -34,7 +35,7 @@ class Search:
     def url(self):
         return f'https://www.plurk.com/search?q={self.query}'
 
-    def get(self, session: requests.Session, min_count: int = 30, time_until: datetime.datetime = None, timeout: float = 35, stop_event: threading.Event = None):
+    def get(self, session: requests.Session, min_count: int = 30, time_until: datetime.datetime | str = None, timeout: float = 35, stop_event: threading.Event = None):
 
         def load_page():
             while not stop_event.is_set():
@@ -142,6 +143,7 @@ class Search:
 
         if stop_event is None: stop_event = threading.Event()
         end_time = time.time() + timeout
+        if isinstance(time_until, str): time_until = dateutil.parser.parse(time_until)
         response_queue = queue.Queue()
         next_id = queue.Queue()
         threading.Thread(target=load_page).start()
@@ -151,7 +153,7 @@ class Search:
                 time.sleep(0.01)
                 if all([
                         True if min_count is None else True if len(self.posts) >= min_count else False,
-                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time <= time_until else False,
+                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time.timestamp() <= time_until.timestamp() else False,
                 ]):
                     return
                 if stop_event.is_set():
@@ -170,7 +172,7 @@ class Post:
         else: self.id: int = convert_to_id(b36)
         self.api_url: str = 'https://www.plurk.com/Responses/get'
         self.api_body: dict = {"plurk_id": self.id, "from_response_id": 0}
-        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
         self.author: User = User()
         self.content: str = ''
         self.content_raw: str = ''
@@ -306,7 +308,7 @@ class Comment:
         self.post: Post = post
         self.floor: int = floor
         self.id: int = id
-        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
         self.author: User = User()
         self.content: str = ''
         self.content_raw: str = ''

@@ -6,6 +6,8 @@ import re
 import threading
 import time
 
+import dateutil
+import pytz
 from bs4 import BeautifulSoup
 
 from .webdriver import ChromeProcess
@@ -27,7 +29,7 @@ class Page:
     def url(self):
         return f'https://www.facebook.com/{self.id if self.id else self.alias}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = None, do_navigate: bool = True):
+    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime | str = None, timeout: float = 30, stop_event: threading.Event = None, do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -82,7 +84,7 @@ class Page:
                         post = Post(self, id=int(p['comet_sections']['content']['story']['post_id']), pfbid=pfbid)
                         post.content = p['comet_sections']['content']['story']['message']['text'] if p['comet_sections']['content']['story']['message'] else ''
                         post.title = p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else ''
-                        post.created_time = datetime.datetime.fromtimestamp(p['comet_sections']['timestamp']['story']['creation_time'])
+                        post.created_time = datetime.datetime.fromtimestamp(p['comet_sections']['timestamp']['story']['creation_time'], tz=pytz.UTC)
                         post.reaction_count = p['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comet_ufi_summary_and_actions_renderer']['feedback']['reaction_count']['count']
                         if 'attachments' in p['comet_sections']['content']['story']:
                             if 'all_subattachments' in p['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']:
@@ -101,6 +103,7 @@ class Page:
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', url_contain=self.url)
         listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', url_contain='https://www.facebook.com/api/graphql/')
         end_time = time.time() + timeout
+        if isinstance(time_until, str): time_until = dateutil.parser.parse(time_until)
         if do_navigate: threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
         try:
@@ -108,7 +111,7 @@ class Page:
                 time.sleep(0.01)
                 if all([
                         True if min_count is None else True if len(self.posts) >= min_count else False,
-                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time <= time_until else False,
+                        True if time_until is None else False if len(self.posts) == 0 else True if self.posts[-1].created_time.timestamp() <= time_until.timestamp() else False,
                 ]):
                     return
                 if stop_event.is_set():
@@ -127,7 +130,7 @@ class Post:
         self.author: Page = page
         self.id: int = id
         self.pfbid: str = pfbid
-        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
         self.title: str = ''
         self.content: str = ''
         self.comments: list[Comment] = []
@@ -180,7 +183,7 @@ class Post:
                             self.pfbid = post['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1]
                             self.content = post['comet_sections']['content']['story']['message']['text'] if post['comet_sections']['content']['story']['message'] else ''
                             self.title = post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else ''
-                            self.created_time = datetime.datetime.fromtimestamp(post['comet_sections']['timestamp']['story']['creation_time'])
+                            self.created_time = datetime.datetime.fromtimestamp(post['comet_sections']['timestamp']['story']['creation_time'], tz=pytz.UTC)
                             self.reaction_count = post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comet_ufi_summary_and_actions_renderer']['feedback']['reaction_count']['count']
                             if 'attachments' in post['comet_sections']['content']['story']:
                                 if 'all_subattachments' in post['comet_sections']['content']['story']['attachments'][0]['styles']['attachment']:
@@ -212,7 +215,7 @@ class Post:
                         try:
                             comment = Comment(self.page, self, c['node']['legacy_fbid'])
                             comment.content = c['node']['body']['text']
-                            comment.created_time = datetime.datetime.fromtimestamp(c['node']['created_time'])
+                            comment.created_time = datetime.datetime.fromtimestamp(c['node']['created_time'], tz=pytz.UTC)
                             comment.reaction_count = c['node']['feedback']['reactors']['count_reduced']
                             if self.page.id == c['node']['author']['id']:
                                 comment.author = self.page
@@ -307,7 +310,7 @@ class Comment:
         self.author: Page = page
         self.post: Post = post
         self.id: int = id
-        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
         self.content: str = ''
         self._logger = logging.getLogger(self.__repr__())
 

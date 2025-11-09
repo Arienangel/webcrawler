@@ -6,6 +6,7 @@ import threading
 import time
 
 import dateutil
+import pytz
 
 from .webdriver import ChromeProcess
 
@@ -26,7 +27,7 @@ class User:
     def url(self):
         return f'https://x.com/{self.alias}'
 
-    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime = None, timeout: float = 30, stop_event: threading.Event = None, do_navigate: bool = True):
+    def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime | str = None, timeout: float = 30, stop_event: threading.Event = None, do_navigate: bool = True):
 
         def load_page():
             browser.get(self.url)
@@ -94,6 +95,7 @@ class User:
         if stop_event is None: stop_event = threading.Event()
         listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/UserTweets')
         end_time = time.time() + timeout
+        if isinstance(time_until, str): time_until = dateutil.parser.parse(time_until)
         if do_navigate: threading.Thread(target=load_page).start()
         threading.Thread(target=read_received).start()
         try:
@@ -101,7 +103,7 @@ class User:
                 time.sleep(0.01)
                 if all([
                         True if min_count is None else True if len(self.tweets) >= min_count else False,
-                        True if time_until is None else False if len(self.tweets) == 0 else True if self.tweets[-1].created_time <= time_until else False,
+                        True if time_until is None else False if len(self.tweets) == 0 else True if self.tweets[-1].created_time.timestamp() <= time_until.timestamp() else False,
                 ]):
                     return
                 if stop_event.is_set():
@@ -150,7 +152,7 @@ class Tweet:
     def __init__(self, user: User = None, id: int = None):
         self.user: User = user
         self.id: int = id
-        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
+        self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
         self.content: str = ''
         self.comments: list[Tweet] = []
         self._logger = logging.getLogger(self.__repr__())
