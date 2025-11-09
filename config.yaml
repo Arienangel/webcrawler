@@ -3,7 +3,7 @@ logging:
   level: 30
 
 notify:
-  enable: true
+  enable: false
   config: apprise.yaml
 
 webdriver:
@@ -55,7 +55,7 @@ webcrawler:
         remote_debugging_port: 9222
         user_data_dir: "webcrawler/dcard_crawler"
     notify:
-      enable: true
+      enable: false
   facebook:
     enable: true
     do_page_get: true
@@ -79,7 +79,7 @@ webcrawler:
         remote_debugging_port: 9223
         user_data_dir: "webcrawler/facebook_crawler"
     notify:
-      enable: true
+      enable: false
   plurk:
     enable: true
     do_search_get: true
@@ -100,7 +100,7 @@ webcrawler:
       posts: "data/plurk-posts.db"
       comments: "data/plurk-comments.db"
     notify:
-      enable: true
+      enable: false
   ptt:
     enable: true
     do_forum_get: true
@@ -118,4 +118,4 @@ webcrawler:
       posts: "data/ptt-posts.db"
       comments: "data/ptt-comments.db"
     notify:
-      enable: true
+      enable: false
