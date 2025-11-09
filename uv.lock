@@ -854,12 +854,14 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "pyyaml" },
     { name = "requests" },
-    { name = "selenium" },
 ]
 
 [package.optional-dependencies]
 notify = [
     { name = "apprise" },
+]
+selenium = [
+    { name = "selenium" },
 ]
 
 [package.dev-dependencies]
@@ -878,9 +880,9 @@ requires-dist = [
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "requests", specifier = ">=2.32.5" },
-    { name = "selenium", specifier = ">=4.36.0" },
+    { name = "selenium", marker = "extra == 'selenium'", specifier = ">=4.36.0" },
 ]
-provides-extras = ["notify"]
+provides-extras = ["notify", "selenium"]
 
 [package.metadata.requires-dev]
 dev = [

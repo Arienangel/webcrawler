@@ -10,12 +10,14 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
-    "selenium>=4.36.0",
 ]
 
 [project.optional-dependencies]
 notify = [
     "apprise>=1.9.5",
+]
+selenium = [
+    "selenium>=4.36.0",
 ]
 
 [tool.uv]
