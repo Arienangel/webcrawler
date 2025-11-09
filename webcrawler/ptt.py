@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 class Forum:
 
-    def __init__(self, name: str = None):
+    def __init__(self, name: str = ''):
         self.name: str = name
         self.posts: list[Post] = []
         self._logger = logging.getLogger(self.__repr__())
@@ -71,13 +71,13 @@ class Forum:
 
 class Post:
 
-    def __init__(self, forum: Forum = None, id: str = None):
+    def __init__(self, forum: Forum = None, id: str = ''):
         self.forum: Forum = forum
         self.id: str = id
         self.time: datetime.datetime = datetime.datetime.fromtimestamp(0)
         self.author: User = User()
-        self.title: str = None
-        self.content: str = None
+        self.title: str = ''
+        self.content: str = ''
         self.comments: list[Post] = []
         self._logger = logging.getLogger(self.__repr__())
 
@@ -130,8 +130,8 @@ class Comment:
         self.floor: int = floor
         self.time: datetime.datetime = datetime.datetime.fromtimestamp(0)
         self.author: User = User()
-        self.content: str = None
-        self.reaction: str = None
+        self.content: str = ''
+        self.reaction: str = ''
         self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
@@ -140,7 +140,7 @@ class Comment:
 
 class User:
 
-    def __init__(self, id: str = None, name: str = None):
+    def __init__(self, id: str = '', name: str = ''):
         self.id: str = id
         self.name: str = name
 

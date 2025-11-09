@@ -13,10 +13,10 @@ from .webdriver import ChromeProcess
 
 class Page:
 
-    def __init__(self, id: int = None, alias: str = None):
+    def __init__(self, id: int = None, alias: str = ''):
         self.id: int = id
         self.alias: str = alias
-        self.name: str = None
+        self.name: str = ''
         self.posts: list[Post] = []
         self._logger = logging.getLogger(self.__repr__())
 
@@ -78,10 +78,10 @@ class Page:
                         pass
                 for p in posts:
                     try:
-                        pfbid = p['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1] if 'posts' in p['comet_sections']['content']['story']['wwwURL'] else None
+                        pfbid = p['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1] if 'posts' in p['comet_sections']['content']['story']['wwwURL'] else ''
                         post = Post(self, id=int(p['comet_sections']['content']['story']['post_id']), pfbid=pfbid)
-                        post.content = p['comet_sections']['content']['story']['message']['text'] if p['comet_sections']['content']['story']['message'] else None
-                        post.title = p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else None
+                        post.content = p['comet_sections']['content']['story']['message']['text'] if p['comet_sections']['content']['story']['message'] else ''
+                        post.title = p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if p['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else ''
                         post.created_time = datetime.datetime.fromtimestamp(p['comet_sections']['timestamp']['story']['creation_time'])
                         post.reaction_count = p['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comet_ufi_summary_and_actions_renderer']['feedback']['reaction_count']['count']
                         if 'attachments' in p['comet_sections']['content']['story']:
@@ -122,14 +122,14 @@ class Page:
 
 class Post:
 
-    def __init__(self, page: Page = None, id: int = None, pfbid: str = None):
+    def __init__(self, page: Page = None, id: int = None, pfbid: str = ''):
         self.page: Page = page
         self.author: Page = page
         self.id: int = id
         self.pfbid: str = pfbid
         self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
-        self.title: str = None
-        self.content: str = None
+        self.title: str = ''
+        self.content: str = ''
         self.comments: list[Comment] = []
         self._logger = logging.getLogger(self.__repr__())
 
@@ -178,8 +178,8 @@ class Post:
                                 self.page.name = post['comet_sections']['content']['story']['actors'][0]['name']
                             self.id = int(post['comet_sections']['content']['story']['post_id'])
                             self.pfbid = post['comet_sections']['content']['story']['wwwURL'].split('/posts/')[1]
-                            self.content = post['comet_sections']['content']['story']['message']['text'] if post['comet_sections']['content']['story']['message'] else None
-                            self.title = post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else None
+                            self.content = post['comet_sections']['content']['story']['message']['text'] if post['comet_sections']['content']['story']['message'] else ''
+                            self.title = post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title']['text'] if post['comet_sections']['context_layout']['story']['comet_sections']['title']['story']['title'] else ''
                             self.created_time = datetime.datetime.fromtimestamp(post['comet_sections']['timestamp']['story']['creation_time'])
                             self.reaction_count = post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comet_ufi_summary_and_actions_renderer']['feedback']['reaction_count']['count']
                             if 'attachments' in post['comet_sections']['content']['story']:
@@ -308,7 +308,7 @@ class Comment:
         self.post: Post = post
         self.id: int = id
         self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
-        self.content: str = None
+        self.content: str = ''
         self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):

@@ -15,11 +15,12 @@ from webcrawler.webdriver import ChromeProcess
 class dcard_crawler:
     _logger = logging.getLogger('Dcard crawler')
 
-    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_forum_get: bool = True, do_post_get: bool = True):
+    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_forum_get: bool = True, do_post_get: bool = True, notifier: Notifier = None):
         self._stop_browser_atexit = False if browser else True
         self.browser = browser or ChromeProcess(**chromeprocess_kwargs)
         self.do_forum_get = do_forum_get
         self.do_post_get = do_post_get
+        self.notifier = notifier
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
         self.used_posts = set()
@@ -33,7 +34,7 @@ class dcard_crawler:
     def start_thread(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
         logger.info('Start dcard crawler')
         self.stop_thread = False
-        if not get_repeated_posts:
+        if (not get_repeated_posts) and posts_db_path:
             with sqlite3.connect(posts_db_path) as db:
                 tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
                 for table in tables:
@@ -42,10 +43,13 @@ class dcard_crawler:
         try:
             while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
                 time.sleep(0.01)
-                if posts_db_path:
-                    if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
-                if comments_db_path:
-                    if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
+                if len(self.queue_posts.queue):
+                    posts = self.queue_posts.get()
+                    if posts_db_path: self.write_posts_db(posts, posts_db_path)
+                    if self.notifier: self.notify(posts)
+                if len(self.queue_comments.queue):
+                    comments = self.queue_comments.get()
+                    if comments_db_path: self.write_comments_db(comments, comments_db_path)
         finally:
             self.exit()
             logger.info('Finish dcard crawler')
@@ -84,6 +88,10 @@ class dcard_crawler:
         finally:
             self.stop_thread = True
 
+    def notify(self, posts: list[dcard.Post]):
+        for post in posts:
+            self.notifier.send(tag=['default', 'dcard', f'dcard/{post.forum.alias}'], title=f'Dcard: {post.forum.name}', body=f'{post.author.school} {post.author.department}\n---\n{post.title}\n{post.content}\n---\n{post.created_time}\n{post.url}')
+
     def write_posts_db(self, posts: list[dcard.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
             for post in posts:
@@ -114,11 +122,12 @@ class dcard_crawler:
 class facebook_crawler:
     _logger = logging.getLogger('Facebook crawler')
 
-    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_page_get: bool = True, do_post_get: bool = True):
+    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_page_get: bool = True, do_post_get: bool = True, notifier: Notifier = None):
         self._stop_browser_atexit = False if browser else True
         self.browser = browser or ChromeProcess(**chromeprocess_kwargs)
         self.do_page_get = do_page_get
         self.do_post_get = do_post_get
+        self.notifier = notifier
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
         self.used_posts = set()
@@ -133,7 +142,7 @@ class facebook_crawler:
     def start_thread(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
         logger.info('Start facebook crawler')
         self.stop_thread = False
-        if not get_repeated_posts:
+        if (not get_repeated_posts) and posts_db_path:
             with sqlite3.connect(posts_db_path) as db:
                 tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
                 for table in tables:
@@ -142,10 +151,13 @@ class facebook_crawler:
         try:
             while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
                 time.sleep(0.01)
-                if posts_db_path:
-                    if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
-                if comments_db_path:
-                    if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
+                if len(self.queue_posts.queue):
+                    posts = self.queue_posts.get()
+                    if posts_db_path: self.write_posts_db(posts, posts_db_path)
+                    if self.notifier: self.notify(posts)
+                if len(self.queue_comments.queue):
+                    comments = self.queue_comments.get()
+                    if comments_db_path: self.write_comments_db(comments, comments_db_path)
         finally:
             self.exit()
             logger.info('Finish facebook crawler')
@@ -184,6 +196,10 @@ class facebook_crawler:
         finally:
             self.stop_thread = True
 
+    def notify(self, posts: list[facebook.Post]):
+        for post in posts:
+            self.notifier.send(tag=['default', 'facebook', f'facebook/{post.page.id}', f'facebook/{post.page.alias}'], title=f'Facebook: {post.page.name}', body=f'{post.title}\n{post.content}\n---\n{post.created_time}\n{post.url}')
+
     def write_posts_db(self, posts: list[facebook.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
             for post in posts:
@@ -214,11 +230,12 @@ class facebook_crawler:
 class plurk_crawler:
     _logger = logging.getLogger('Plurk crawler')
 
-    def __init__(self, browser: requests.Session = None, do_search_get: bool = True, do_post_get: bool = False):
+    def __init__(self, browser: requests.Session = None, do_search_get: bool = True, do_post_get: bool = False, notifier: Notifier = None):
         self._stop_browser_atexit = False if browser else True
         self.browser = browser or requests.Session()
         self.do_search_get = do_search_get
         self.do_post_get = do_post_get
+        self.notifier = notifier
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
         self.used_posts = set()
@@ -232,7 +249,7 @@ class plurk_crawler:
     def start_thread(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
         self.stop_thread = False
         logger.info('Start plurk crawler')
-        if not get_repeated_posts:
+        if (not get_repeated_posts) and posts_db_path:
             with sqlite3.connect(posts_db_path) as db:
                 tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
                 for table in tables:
@@ -241,10 +258,13 @@ class plurk_crawler:
         try:
             while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
                 time.sleep(0.01)
-                if posts_db_path:
-                    if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
-                if comments_db_path:
-                    if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
+                if len(self.queue_posts.queue):
+                    posts = self.queue_posts.get()
+                    if posts_db_path: self.write_posts_db(posts, posts_db_path)
+                    if self.notifier: self.notify(posts)
+                if len(self.queue_comments.queue):
+                    comments = self.queue_comments.get()
+                    if comments_db_path: self.write_comments_db(comments, comments_db_path)
         finally:
             self.exit()
             logger.info('Finish plurk crawler')
@@ -281,6 +301,10 @@ class plurk_crawler:
         finally:
             self.stop_thread = True
 
+    def notify(self, posts: list[plurk.Post]):
+        for post in posts:
+            self.notifier.send(tag=['default', 'plurk', f'plurk/{post.query}'], title='Plurk', body=f'{post.author.display_name}\n---\n{post.content_raw}\n---\n{post.created_time}\n{post.url}')
+
     def write_posts_db(self, posts: list[plurk.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
             for post in posts:
@@ -311,11 +335,12 @@ class plurk_crawler:
 class ptt_crawler:
     _logger = logging.getLogger('PTT crawler')
 
-    def __init__(self, browser: requests.Session = None, do_forum_get: bool = True, do_post_get: bool = True):
+    def __init__(self, browser: requests.Session = None, do_forum_get: bool = True, do_post_get: bool = True, notifier: Notifier = None):
         self._stop_browser_atexit = False if browser else True
         self.browser = browser or requests.Session()
         self.do_forum_get = do_forum_get
         self.do_post_get = do_post_get
+        self.notifier = notifier
         self.queue_posts = queue.Queue()
         self.queue_comments = queue.Queue()
         self.used_posts = set()
@@ -329,7 +354,7 @@ class ptt_crawler:
     def start_thread(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
         self.stop_thread = False
         logger.info('Start ptt crawler')
-        if not get_repeated_posts:
+        if (not get_repeated_posts) and posts_db_path:
             with sqlite3.connect(posts_db_path) as db:
                 tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
                 for table in tables:
@@ -338,10 +363,13 @@ class ptt_crawler:
         try:
             while (not self.stop_thread) or len(self.queue_posts.queue) or len(self.queue_comments.queue):
                 time.sleep(0.01)
-                if posts_db_path:
-                    if len(self.queue_posts.queue): self.write_posts_db(self.queue_posts.get(), posts_db_path)
-                if comments_db_path:
-                    if len(self.queue_comments.queue): self.write_comments_db(self.queue_comments.get(), comments_db_path)
+                if len(self.queue_posts.queue):
+                    posts = self.queue_posts.get()
+                    if posts_db_path: self.write_posts_db(posts, posts_db_path)
+                    if self.notifier: self.notify(posts)
+                if len(self.queue_comments.queue):
+                    comments = self.queue_comments.get()
+                    if comments_db_path: self.write_comments_db(comments, comments_db_path)
         finally:
             self.exit()
             logger.info('Finish ptt crawler')
@@ -378,6 +406,10 @@ class ptt_crawler:
         finally:
             self.stop_thread = True
 
+    def notify(self, posts: list[ptt.Post]):
+        for post in posts:
+            self.notifier.send(tag=['default', 'ptt', f'ptt/{post.forum.name}'], title=f'PTT: {post.forum.name}', body=f'{post.author.id} ({post.author.name})\n---\n{post.title}\n{post.content}\n---\n{post.time}\n{post.url}')
+
     def write_posts_db(self, posts: list[ptt.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
             for post in posts:
@@ -405,6 +437,24 @@ class ptt_crawler:
                     continue
 
 
+class Notifier:
+    _logger = logging.getLogger('Notifier')
+
+    def __init__(self):
+        import apprise
+        self.apobj = apprise.Apprise()
+        self.config = apprise.AppriseConfig()
+        self.config.add(config['notify']['config'])
+        self.apobj.add(self.config)
+        self._logger.info(f"Apprise config file: {config['notify']['config']}")
+
+    def send(self, **kwargs):
+        try:
+            self.apobj.notify(**kwargs)
+        except Exception as E:
+            self._logger.warning(f'Send notify failed: {type(E)}:{E.args}: {kwargs}')
+
+
 if __name__ == '__main__':
     import argparse
     import sys
@@ -421,10 +471,11 @@ if __name__ == '__main__':
     logger = logging.getLogger('App')
     logger.debug(f'GIL enabled: {sys._is_gil_enabled()}')
     logger.info(f'Config file: {args.f}')
+    if config['notify']['enable']: notifier = Notifier()
     jobs = []
     if config['webcrawler']['dcard']['enable']:
         try:
-            forums=config['webcrawler']['dcard']['forums']
+            forums = config['webcrawler']['dcard']['forums']
             random.shuffle(forums)
             chromeprocess_kwargs = config['webdriver']['chromeprocess']
             chromeprocess_kwargs.update(config['webcrawler']['dcard']['webdriver']['chromeprocess'])
@@ -432,6 +483,7 @@ if __name__ == '__main__':
                 chromeprocess_kwargs=chromeprocess_kwargs,
                 do_forum_get=config['webcrawler']['dcard']['do_forum_get'],
                 do_post_get=config['webcrawler']['dcard']['do_post_get'],
+                notifier=notifier if (config['notify']['enable'] and config['webcrawler']['dcard']['notify']['enable']) else None,
             ).start_thread, args=[
                 forums,
                 config['webcrawler']['dcard']['forum_get'],
@@ -445,7 +497,7 @@ if __name__ == '__main__':
             logger.warning(f'Add dcard job failed: {type(E)}:{E.args}')
     if config['webcrawler']['facebook']['enable']:
         try:
-            pages=config['webcrawler']['facebook']['pages']
+            pages = config['webcrawler']['facebook']['pages']
             random.shuffle(pages)
             chromeprocess_kwargs = config['webdriver']['chromeprocess']
             chromeprocess_kwargs.update(config['webcrawler']['facebook']['webdriver']['chromeprocess'])
@@ -453,6 +505,7 @@ if __name__ == '__main__':
                 chromeprocess_kwargs=chromeprocess_kwargs,
                 do_page_get=config['webcrawler']['facebook']['do_page_get'],
                 do_post_get=config['webcrawler']['facebook']['do_post_get'],
+                notifier=notifier if (config['notify']['enable'] and config['webcrawler']['facebook']['notify']['enable']) else None,
             ).start_thread, args=[
                 pages,
                 config['webcrawler']['facebook']['page_get'],
@@ -466,11 +519,12 @@ if __name__ == '__main__':
             logger.warning(f'Add facebook job failed: {type(E)}:{E.args}')
     if config['webcrawler']['plurk']['enable']:
         try:
-            searches=config['webcrawler']['plurk']['searches']
+            searches = config['webcrawler']['plurk']['searches']
             random.shuffle(searches)
             jobs.append(threading.Thread(target=plurk_crawler(
                 do_search_get=config['webcrawler']['plurk']['do_search_get'],
                 do_post_get=config['webcrawler']['plurk']['do_post_get'],
+                notifier=notifier if (config['notify']['enable'] and config['webcrawler']['plurk']['notify']['enable']) else None,
             ).start_thread, args=[
                 searches,
                 config['webcrawler']['plurk']['search_get'],
@@ -484,11 +538,12 @@ if __name__ == '__main__':
             logger.warning(f'Add plurk job failed: {type(E)}:{E.args}')
     if config['webcrawler']['ptt']['enable']:
         try:
-            forums=config['webcrawler']['ptt']['forums']
+            forums = config['webcrawler']['ptt']['forums']
             random.shuffle(forums)
             jobs.append(threading.Thread(target=ptt_crawler(
                 do_forum_get=config['webcrawler']['ptt']['do_forum_get'],
                 do_post_get=config['webcrawler']['ptt']['do_post_get'],
+                notifier=notifier if (config['notify']['enable'] and config['webcrawler']['ptt']['notify']['enable']) else None,
             ).start_thread, args=[
                 forums,
                 config['webcrawler']['ptt']['forum_get'],

@@ -2,6 +2,10 @@ logging:
   format: "%(asctime)s %(levelname)s %(name)s: %(message)s"
   level: 30
 
+notify:
+  enable: true
+  config: apprise.yaml
+
 webdriver:
   chromedriver:
     chromedriver_path: "chromedriver"
@@ -50,6 +54,8 @@ webcrawler:
       chromeprocess:
         remote_debugging_port: 9222
         user_data_dir: "webcrawler/dcard_crawler"
+    notify:
+      enable: true
   facebook:
     enable: true
     do_page_get: true
@@ -72,6 +78,8 @@ webcrawler:
       chromeprocess:
         remote_debugging_port: 9223
         user_data_dir: "webcrawler/facebook_crawler"
+    notify:
+      enable: true
   plurk:
     enable: true
     do_search_get: true
@@ -91,6 +99,8 @@ webcrawler:
     db:
       posts: "data/plurk-posts.db"
       comments: "data/plurk-comments.db"
+    notify:
+      enable: true
   ptt:
     enable: true
     do_forum_get: true
@@ -107,3 +117,5 @@ webcrawler:
     db:
       posts: "data/ptt-posts.db"
       comments: "data/ptt-comments.db"
+    notify:
+      enable: true

@@ -13,6 +13,11 @@ dependencies = [
     "selenium>=4.36.0",
 ]
 
+[project.optional-dependencies]
+notify = [
+    "apprise>=1.9.5",
+]
+
 [tool.uv]
 override-dependencies = [
     "pywin32; sys_platform == 'never'",

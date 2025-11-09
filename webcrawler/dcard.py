@@ -13,8 +13,9 @@ from .webdriver import ChromeProcess
 
 class Forum:
 
-    def __init__(self, alias: str = None):
+    def __init__(self, alias: str = ''):
         self.alias: str = alias
+        self.name: str = ''
         self.posts: list[Post] = []
         self._logger = logging.getLogger(self.__repr__())
 
@@ -95,7 +96,7 @@ class Forum:
                         self.enable_edited_history = response['enableEditedHistory']
                         self.enable_immersive_video = response['enableImmersiveVideo']
                         self.discussion_volume = response['discussionVolume']
-                        self.latest_post_pinned_at = dateutil.parser.parse(response['latestPostPinnedAt']) if response['latestPostPinnedAt'] in response else None
+                        self.latest_post_pinned_at = dateutil.parser.parse(response['latestPostPinnedAt']) if response['latestPostPinnedAt'] in response else ''
                     except:
                         continue
                 if len(listener2.queue):
@@ -115,11 +116,11 @@ class Forum:
                                 post.anonymous_school = p['anonymousSchool']
                                 post.anonymous_department = p['anonymousDepartment']
                                 post.with_nickname = p['withNickname']
-                                post.author.school = p['school'] if 'school' in p else None
-                                post.author.department = p['department'] if 'department' in p else None
-                                post.author.nickname = p['personaNickname'] if 'personaNickname' in p else None
-                                post.author.id = p['personaUid'] if 'personaUid' in p else None
-                                post.author.gender = p['gender'] if 'gender' in p else None
+                                post.author.school = p['school'] if 'school' in p else ''
+                                post.author.department = p['department'] if 'department' in p else ''
+                                post.author.nickname = p['personaNickname'] if 'personaNickname' in p else ''
+                                post.author.id = p['personaUid'] if 'personaUid' in p else ''
+                                post.author.gender = p['gender'] if 'gender' in p else ''
                                 post.author.is_suspicious_account = p['isSuspiciousAccount']
                                 post.author.is_moderator = p['isModerator']
                                 post.author.verified_badge = p['verifiedBadge']
@@ -203,8 +204,8 @@ class Post:
         self.id: int = id
         self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
         self.author: User = User()
-        self.title: str = None
-        self.content: str = None
+        self.title: str = ''
+        self.content: str = ''
         self.comments: list[Comment] = []
         self._logger = logging.getLogger(self.__repr__())
 
@@ -250,11 +251,11 @@ class Post:
                             self.content = r['text']
                             self.created_time = dateutil.parser.parse(r['datePublished'])
                             self.modified_time = dateutil.parser.parse(r['dateModified'])
-                            self.author.school = r['author']['name'] if 'name' in r['author'] else None
-                            self.author.department = r['author']['identifier'] if 'identifier' in r['author'] else None
-                            self.author.nickname = r['author']['name'] if 'name' in r['author'] else None
-                            self.author.id = r['author']['identifier'] if 'identifier' in r['author'] else None
-                            self.author.gender = r['author']['gender'] if 'gender' in r['author'] else None
+                            self.author.school = r['author']['name'] if 'name' in r['author'] else ''
+                            self.author.department = r['author']['identifier'] if 'identifier' in r['author'] else ''
+                            self.author.nickname = r['author']['name'] if 'name' in r['author'] else ''
+                            self.author.id = r['author']['identifier'] if 'identifier' in r['author'] else ''
+                            self.author.gender = r['author']['gender'] if 'gender' in r['author'] else ''
                             self.like_count = r['interactionStatistic'][0]['userInteractionCount']
                             self.comment_count = r['interactionStatistic'][1]['userInteractionCount']
                             self.share_count = r['interactionStatistic'][2]['userInteractionCount']
@@ -273,11 +274,11 @@ class Post:
                         self.anonymous_school = response['anonymousSchool']
                         self.anonymous_department = response['anonymousDepartment']
                         self.with_nickname = response['withNickname']
-                        self.author.school = response['school'] if 'school' in response else None
-                        self.author.department = response['department'] if 'department' in response else None
-                        self.author.nickname = response['personaNickname'] if 'personaNickname' in response else None
-                        self.author.id = response['personaUid'] if 'personaUid' in response else None
-                        self.author.gender = response['gender'] if 'gender' in c else None
+                        self.author.school = response['school'] if 'school' in response else ''
+                        self.author.department = response['department'] if 'department' in response else ''
+                        self.author.nickname = response['personaNickname'] if 'personaNickname' in response else ''
+                        self.author.id = response['personaUid'] if 'personaUid' in response else ''
+                        self.author.gender = response['gender'] if 'gender' in c else ''
                         self.author.is_suspicious_account = response['isSuspiciousAccount']
                         self.author.is_moderator = response['isModerator']
                         self.author.verified_badge = response['verifiedBadge']
@@ -335,16 +336,16 @@ class Post:
                         try:
                             comment = Comment(self.forum, self, c['floor'])
                             comment.id = c['id']
-                            comment.content = c['content'] if 'content' in c else None
+                            comment.content = c['content'] if 'content' in c else ''
                             comment.created_time = dateutil.parser.parse(c['createdAt'])
                             comment.modified_time = dateutil.parser.parse(c['updatedAt'])
                             comment.anonymous = c['anonymous'] if 'anonymous' in c else None
                             comment.with_nickname = c['withNickname']
-                            comment.author.school = c['school'] if 'school' in c else None
-                            comment.author.department = c['department'] if 'department' in c else None
-                            comment.author.nickname = c['personaNickname'] if 'personaNickname' in c else None
-                            comment.author.id = c['personaUid'] if 'personaUid' in c else None
-                            comment.author.gender = c['gender'] if 'gender' in c else None
+                            comment.author.school = c['school'] if 'school' in c else ''
+                            comment.author.department = c['department'] if 'department' in c else ''
+                            comment.author.nickname = c['personaNickname'] if 'personaNickname' in c else ''
+                            comment.author.id = c['personaUid'] if 'personaUid' in c else ''
+                            comment.author.gender = c['gender'] if 'gender' in c else ''
                             comment.author.is_suspicious_account = c['isSuspiciousAccount']
                             comment.author.is_moderator = c['isModerator']
                             comment.author.verified_badge = c['verifiedBadge']
@@ -363,12 +364,12 @@ class Post:
                             comment.current_member = c['currentMember']
                             comment.hidden = c['hidden']
                             comment.in_review = c['inReview']
-                            comment.links = c['links']  if 'links' in c else []
+                            comment.links = c['links'] if 'links' in c else []
                             comment.report_reason_text = c['reportReasonText']
                             comment.doorplate = c['doorplate']
                             comment.with_badge = c['withBadge']
                             comment.is_throttled = c['isThrottled']
-                            comment.identity_idV3 = c['identityIdV3'] if 'identityIdV3' in c else None
+                            comment.identity_idV3 = c['identityIdV3'] if 'identityIdV3' in c else ''
                             comment.edited = c['edited']
                             comment.post_avatar = c['postAvatar']
                             comment.activity_avatar = c['activityAvatar']
@@ -413,7 +414,7 @@ class Comment:
         self.floor: int = floor
         self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
         self.author: User = User()
-        self.content: str = None
+        self.content: str = ''
         self._logger = logging.getLogger(self.__repr__())
 
     def __repr__(self):
@@ -422,7 +423,7 @@ class Comment:
 
 class User:
 
-    def __init__(self, school: str = None, department: str = None, nickname: str = None, id: str = None, gender: str = None):
+    def __init__(self, school: str = '', department: str = '', nickname: str = '', id: str = '', gender: str = ''):
         self.school: str = school
         self.department: str = department
         self.nickname: str = nickname

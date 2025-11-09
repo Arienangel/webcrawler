@@ -1,0 +1,18 @@
+# https://github.com/caronc/apprise#supported-notifications
+
+version: 1
+urls:
+  - discord://webhook_id/webhook_token:
+      - tag: default
+  - line://Token@User:
+      - tag: default
+  - tgram://bottoken/ChatID:
+      - tag: default
+#  - gotifys://hostname/token:
+#      - tag: dcard
+#  - gotifys://hostname/token:
+#      - tag: facebook
+#  - gotifys://hostname/token:
+#      - tag: plurk
+#  - gotifys://hostname/token:
+#      - tag: ptt

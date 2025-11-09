@@ -12,7 +12,7 @@ from .webdriver import ChromeProcess
 
 class User:
 
-    def __init__(self, id: int = None, alias: str = None, name: str = None):
+    def __init__(self, id: int = None, alias: str = '', name: str = ''):
         self.id: int = id
         self.alias: str = alias
         self.name: str = name
@@ -118,16 +118,16 @@ class User:
         self.description = user_data['legacy']['description']
         self.created_time = dateutil.parser.parse(user_data['core']['created_at'])
         self.image_url = user_data['avatar']['image_url']
-        self.profile_banner_url = user_data['legacy']['profile_banner_url'] if 'profile_banner_url' in user_data['legacy'] else None
+        self.profile_banner_url = user_data['legacy']['profile_banner_url'] if 'profile_banner_url' in user_data['legacy'] else ''
         self.favourites_count = user_data['legacy']['favourites_count']
         self.followers_count = user_data['legacy']['followers_count']
         self.friends_count = user_data['legacy']['friends_count']
         self.listed_count = user_data['legacy']['listed_count']
         self.media_count = user_data['legacy']['media_count']
         self.statuses_count = user_data['legacy']['statuses_count']
-        self.link = user_data['legacy']['url'] if 'url' in user_data['legacy'] else None
-        self.location = user_data['location']['location'] if 'location' in user_data else None
-        self.professional = user_data['professional']['category'][0]['name'] if 'professional' in user_data else None
+        self.link = user_data['legacy']['url'] if 'url' in user_data['legacy'] else ''
+        self.location = user_data['location']['location'] if 'location' in user_data else ''
+        self.professional = user_data['professional']['category'][0]['name'] if 'professional' in user_data else ''
         self.is_blue_verified = user_data['is_blue_verified']
         self.verified = user_data['verification']['verified']
         self.can_dm = user_data['dm_permissions']['can_dm'] if 'can_dm' in user_data['dm_permissions'] else None
@@ -142,7 +142,7 @@ class User:
         self.can_media_tag = user_data['media_permissions']['can_media_tag'] if 'can_media_tag' in user_data['media_permissions'] else None
         self.parody_commentary_fan_label = user_data['parody_commentary_fan_label']
         self.protected = user_data['privacy']['protected']
-        self.following = user_data['relationship_perspectives']['following'] if 'relationship_perspectives' in user_data['media_permissions'] else None
+        self.following = user_data['relationship_perspectives']['following'] if 'relationship_perspectives' in user_data['relationship_perspectives'] else None
 
 
 class Tweet:
@@ -151,7 +151,7 @@ class Tweet:
         self.user: User = user
         self.id: int = id
         self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0)
-        self.content: str = None
+        self.content: str = ''
         self.comments: list[Tweet] = []
         self._logger = logging.getLogger(self.__repr__())
 
