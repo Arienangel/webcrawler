@@ -18,19 +18,22 @@ class ChromeDriver(webdriver.Chrome):
     _logger = logging.getLogger('ChromeDriver')
 
     def __init__(
-        self,
-        chromedriver_path: str = 'chromedriver',
-        user_data_dir: str = None,
-        profile_directory: str = None,
-        headless: bool = False,
-        window_size: list = [1280, 720],
-        remote_debugging_host: str = '127.0.0.1',
-        remote_debugging_port: int = 9222,
-        service_kwargs: dict = {},
-        chrome_options: list = [],
-        experimental_options: dict = {},
+            self,
+            chromedriver_path: str = 'chromedriver',
+            user_data_dir: str = None,
+            profile_directory: str = None,
+            headless: bool = False,
+            window_size: tuple = (1280, 720),
+            remote_debugging_host: str = '127.0.0.1',
+            remote_debugging_port: int = 9222,
+            service_kwargs: dict = None,
+            chrome_options: list = None,
+            experimental_options: dict = None,
     ):
         self.window_size = window_size
+        service_kwargs = service_kwargs or {},
+        chrome_options = chrome_options or [],
+        experimental_options = experimental_options or {},
         self.service = webdriver.ChromeService(executable_path=chromedriver_path, **service_kwargs)
         self.options = webdriver.ChromeOptions()
         self.options.add_argument('--disable-popup-blocking')
@@ -77,21 +80,22 @@ class ChromeProcess:
     _logger = logging.getLogger('ChromeProcess')
 
     def __init__(
-        self,
-        chrome_path: str = 'chrome',
-        user_data_dir: str = None,
-        profile_directory: str = None,
-        incognito: bool = True,
-        headless: bool = False,
-        window_size: list = [1280, 720],
-        remote_debugging_host: str = '127.0.0.1',
-        remote_debugging_port: int = 9222,
-        log_level: int = 3,
-        chrome_options: list = [],
-        use_exist: bool = False,
+            self,
+            chrome_path: str = 'chrome',
+            user_data_dir: str = None,
+            profile_directory: str = None,
+            incognito: bool = True,
+            headless: bool = False,
+            window_size: tuple = (1280, 720),
+            remote_debugging_host: str = '127.0.0.1',
+            remote_debugging_port: int = 9222,
+            log_level: int = 3,
+            chrome_options: list = None,
+            use_exist: bool = False,
     ):
         self.use_exist = use_exist
         self.window_size = window_size
+        chrome_options = chrome_options or []
         self.options = [chrome_path, '--disable-popup-blocking', f'--window-size={self.window_size[0]},{self.window_size[1]}']
         if incognito:
             self.options.append('--incognito')
@@ -230,7 +234,8 @@ class CDP:
 
     def remove_listener(self, name: str, timeout: float = None):
         if name in self._listeners:
-            for job in self._listeners[name]['jobs']: job.join(timeout)
+            for job in self._listeners[name]['jobs']:
+                job.join(timeout)
             self._listeners.pop(name)
             self._logger.debug(f'Remove network listener: {name}')
         else:
@@ -266,5 +271,6 @@ class CDP:
 
     def stop(self):
         self._running = False
-        self._listeners.clear()
         self.websocket.close()
+        for listener in self._listeners.keys():
+            self.remove_listener(listener)

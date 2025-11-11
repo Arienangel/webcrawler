@@ -321,4 +321,4 @@ class Comment:
 
     @property
     def url(self):
-        return f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.post.id if self.post.id else self.post.pfbid}?comment_id={id}'
+        return f'https://www.facebook.com/{self.page.id if self.page.id else self.page.alias}/posts/{self.post.id if self.post.id else self.post.pfbid}?comment_id={self.id}'

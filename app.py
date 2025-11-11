@@ -16,7 +16,8 @@ from webcrawler.webdriver import ChromeProcess
 class dcard_crawler:
     _logger = logging.getLogger('Dcard crawler')
 
-    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_forum_get: bool = True, do_post_get: bool = True, notifier: Notifier = None, notify_tz=pytz.UTC):
+    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = None, do_forum_get: bool = True, do_post_get: bool = True, notifier: Notifier = None, notify_tz=pytz.UTC):
+        chromeprocess_kwargs = chromeprocess_kwargs or {}
         self._stop_browser_atexit = False if browser else True
         self.browser = browser or ChromeProcess(**chromeprocess_kwargs)
         self.do_forum_get = do_forum_get
@@ -33,8 +34,10 @@ class dcard_crawler:
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
-    def start_thread(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
-        logger.info('Start dcard crawler')
+    def start_thread(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = None, post_get_kwargs: dict = None, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
+        forum_get_kwargs = forum_get_kwargs or {}
+        post_get_kwargs = post_get_kwargs or {}
+        self._logger.info('Start dcard crawler')
         self.stop_thread = False
         if (not get_repeated_posts) and posts_db_path:
             with sqlite3.connect(posts_db_path) as db:
@@ -54,9 +57,11 @@ class dcard_crawler:
                     if comments_db_path: self.write_comments_db(comments, comments_db_path)
         finally:
             self.exit()
-            logger.info('Finish dcard crawler')
+            self._logger.info('Finish dcard crawler')
 
-    def run_crawler(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
+    def run_crawler(self, forums: list[str | dcard.Forum], forum_get_kwargs: dict = None, post_get_kwargs: dict = None):
+        forum_get_kwargs = forum_get_kwargs or {}
+        post_get_kwargs = post_get_kwargs or {}
         try:
             self.browser.get('https://www.dcard.tw/f', referrer='https://www.google.com/')
             time.sleep(10)
@@ -98,7 +103,7 @@ class dcard_crawler:
         with sqlite3.connect(db_path) as db:
             for post in posts:
                 try:
-                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.forum.alias}` ("id" INTEGAR UNIQUE, "created_time" INTEGAR, "author_school" TEXT, "author_department" TEXT, "title" TEXT, "content" TEXT);')
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.forum.alias}` ("id" INTEGER UNIQUE, "created_time" INTEGER, "author_school" TEXT, "author_department" TEXT, "title" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT id FROM `{post.forum.alias}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.forum.alias}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.school, post.author.department, post.title, post.content])
@@ -111,7 +116,7 @@ class dcard_crawler:
         with sqlite3.connect(db_path) as db:
             for comment in comments:
                 try:
-                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "created_time" INTEGAR, "author_school" TEXT, "author_department" TEXT, "content" TEXT);')
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGER UNIQUE, "created_time" INTEGER, "author_school" TEXT, "author_department" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.created_time.timestamp()), comment.author.school, comment.author.department, comment.content])
@@ -124,7 +129,8 @@ class dcard_crawler:
 class facebook_crawler:
     _logger = logging.getLogger('Facebook crawler')
 
-    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = {}, do_page_get: bool = True, do_post_get: bool = True, notifier: Notifier = None, notify_tz=pytz.UTC):
+    def __init__(self, browser: ChromeProcess = None, chromeprocess_kwargs: dict = None, do_page_get: bool = True, do_post_get: bool = True, notifier: Notifier = None, notify_tz=pytz.UTC):
+        chromeprocess_kwargs = chromeprocess_kwargs or {}
         self._stop_browser_atexit = False if browser else True
         self.browser = browser or ChromeProcess(**chromeprocess_kwargs)
         self.do_page_get = do_page_get
@@ -142,8 +148,10 @@ class facebook_crawler:
         self.queue_comments.shutdown()
         self.used_posts = set()
 
-    def start_thread(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
-        logger.info('Start facebook crawler')
+    def start_thread(self, pages: list[str | facebook.Page], page_get_kwargs: dict = None, post_get_kwargs: dict = None, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
+        page_get_kwargs = page_get_kwargs or {}
+        post_get_kwargs = post_get_kwargs or {}
+        self._logger.info('Start facebook crawler')
         self.stop_thread = False
         if (not get_repeated_posts) and posts_db_path:
             with sqlite3.connect(posts_db_path) as db:
@@ -163,9 +171,11 @@ class facebook_crawler:
                     if comments_db_path: self.write_comments_db(comments, comments_db_path)
         finally:
             self.exit()
-            logger.info('Finish facebook crawler')
+            self._logger.info('Finish facebook crawler')
 
-    def run_crawler(self, pages: list[str | facebook.Page], page_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
+    def run_crawler(self, pages: list[str | facebook.Page], page_get_kwargs: dict = None, post_get_kwargs: dict = None):
+        page_get_kwargs = page_get_kwargs or {}
+        post_get_kwargs = post_get_kwargs or {}
         try:
             self.browser.get('https://www.facebook.com/', referrer='https://www.google.com/')
             time.sleep(10)
@@ -207,7 +217,7 @@ class facebook_crawler:
         with sqlite3.connect(db_path) as db:
             for post in posts:
                 try:
-                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.page.id}` ("id" INTEGAR UNIQUE, "pfbid" TEXT, "created_time" INTEGAR, "title" TEXT, "content" TEXT);')
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.page.id}` ("id" INTEGER UNIQUE, "pfbid" TEXT, "created_time" INTEGER, "title" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT id FROM `{post.page.id}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.page.id}` VALUES (?,?,?,?,?);', [post.id, post.pfbid, int(post.created_time.timestamp()), post.title, post.content])
@@ -220,7 +230,7 @@ class facebook_crawler:
         with sqlite3.connect(db_path) as db:
             for comment in comments:
                 try:
-                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("id" INTEGAR UNIQUE, "created_time" INTEGAR, "author_id" INTEGAR, "author_alias" TEXT, "author_name" TEXT, "content" TEXT);')
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("id" INTEGER UNIQUE, "created_time" INTEGER, "author_id" INTEGER, "author_alias" TEXT, "author_name" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT id FROM `{comment.post.id}` WHERE id=?;', [comment.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?);', [comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.alias, comment.author.name, comment.content])
@@ -250,9 +260,11 @@ class plurk_crawler:
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
-    def start_thread(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
+    def start_thread(self, searches: list[str | plurk.Search], search_get_kwargs: dict = None, post_get_kwargs: dict = None, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
+        search_get_kwargs = search_get_kwargs or {}
+        post_get_kwargs = post_get_kwargs or {}
         self.stop_thread = False
-        logger.info('Start plurk crawler')
+        self._logger.info('Start plurk crawler')
         if (not get_repeated_posts) and posts_db_path:
             with sqlite3.connect(posts_db_path) as db:
                 tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
@@ -271,9 +283,11 @@ class plurk_crawler:
                     if comments_db_path: self.write_comments_db(comments, comments_db_path)
         finally:
             self.exit()
-            logger.info('Finish plurk crawler')
+            self._logger.info('Finish plurk crawler')
 
-    def run_crawler(self, searches: list[str | plurk.Search], search_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
+    def run_crawler(self, searches: list[str | plurk.Search], search_get_kwargs: dict = None, post_get_kwargs: dict = None):
+        search_get_kwargs = search_get_kwargs or {}
+        post_get_kwargs = post_get_kwargs or {}
         try:
             for search in searches:
                 if isinstance(search, str): search = plurk.Search(query=search)
@@ -313,7 +327,7 @@ class plurk_crawler:
         with sqlite3.connect(db_path) as db:
             for post in posts:
                 try:
-                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.query}` ("id" INTEGAR UNIQUE, "time" INTEGAR, "author_id" INTEGAR, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.query}` ("id" INTEGER UNIQUE, "time" INTEGER, "author_id" INTEGER, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT id FROM `{post.query}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.query}` VALUES (?,?,?,?,?,?);', [post.id, int(post.created_time.timestamp()), post.author.id, post.author.nickname, post.author.display_name, post.content_raw])
@@ -326,7 +340,7 @@ class plurk_crawler:
         with sqlite3.connect(db_path) as db:
             for comment in comments:
                 try:
-                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "id" INTEGAR, "time" INTEGAR, "author_id" INTEGAR, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGER UNIQUE, "id" INTEGER, "time" INTEGER, "author_id" INTEGER, "author_nickname" TEXT, "author_displayname" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?,?,?);', [comment.floor, comment.id, int(comment.created_time.timestamp()), comment.author.id, comment.author.nickname, comment.author.display_name, comment.content_raw])
@@ -356,9 +370,11 @@ class ptt_crawler:
         self.queue_posts.shutdown()
         self.queue_comments.shutdown()
 
-    def start_thread(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
+    def start_thread(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = None, post_get_kwargs: dict = None, posts_db_path: str = '', comments_db_path: str = '', get_repeated_posts: bool = True):
+        forum_get_kwargs = forum_get_kwargs or {}
+        post_get_kwargs = post_get_kwargs or {}
         self.stop_thread = False
-        logger.info('Start ptt crawler')
+        self._logger.info('Start ptt crawler')
         if (not get_repeated_posts) and posts_db_path:
             with sqlite3.connect(posts_db_path) as db:
                 tables = {row[0] for row in db.execute('SELECT name FROM sqlite_master WHERE type="table";').fetchall()}
@@ -377,9 +393,11 @@ class ptt_crawler:
                     if comments_db_path: self.write_comments_db(comments, comments_db_path)
         finally:
             self.exit()
-            logger.info('Finish ptt crawler')
+            self._logger.info('Finish ptt crawler')
 
-    def run_crawler(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = {}, post_get_kwargs: dict = {}):
+    def run_crawler(self, forums: list[str | ptt.Forum], forum_get_kwargs: dict = None, post_get_kwargs: dict = None):
+        forum_get_kwargs = forum_get_kwargs or {}
+        post_get_kwargs = post_get_kwargs or {}
         try:
             for forum in forums:
                 if isinstance(forum, str): forum = ptt.Forum(name=forum)
@@ -419,7 +437,7 @@ class ptt_crawler:
         with sqlite3.connect(db_path) as db:
             for post in posts:
                 try:
-                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.forum.name}` ("id" TEXT UNIQUE, "time" INTEGAR, "author_id" TEXT, "author_name" TEXT, "title" TEXT, "content" TEXT);')
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{post.forum.name}` ("id" TEXT UNIQUE, "time" INTEGER, "author_id" TEXT, "author_name" TEXT, "title" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT id FROM `{post.forum.name}` WHERE id=?;', [post.id])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{post.forum.name}` VALUES (?,?,?,?,?,?);', [post.id, int(post.time.timestamp()), post.author.id, post.author.name, post.title, post.content])
@@ -432,7 +450,7 @@ class ptt_crawler:
         with sqlite3.connect(db_path) as db:
             for comment in comments:
                 try:
-                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGAR UNIQUE, "time" INTEGAR, "reaction" TEXT, "author_id" TEXT, "content" TEXT);')
+                    db.execute(f'CREATE TABLE IF NOT EXISTS `{comment.post.id}` ("floor" INTEGER UNIQUE, "time" INTEGER, "reaction" TEXT, "author_id" TEXT, "content" TEXT);')
                     cursor = db.execute(f'SELECT floor FROM `{comment.post.id}` WHERE floor=?;', [comment.floor])
                     if not cursor.fetchall():
                         db.execute(f'INSERT INTO `{comment.post.id}` VALUES (?,?,?,?,?);', [comment.floor, int(comment.time.timestamp()), comment.reaction, comment.author.id, comment.content])
@@ -484,7 +502,7 @@ if __name__ == '__main__':
         try:
             forums = config['webcrawler']['dcard']['forums']
             random.shuffle(forums)
-            chromeprocess_kwargs = config['webdriver']['chromeprocess']
+            chromeprocess_kwargs = config['webdriver']['chromeprocess'].copy()
             chromeprocess_kwargs.update(config['webcrawler']['dcard']['webdriver']['chromeprocess'])
             jobs.append(threading.Thread(target=dcard_crawler(
                 chromeprocess_kwargs=chromeprocess_kwargs,
@@ -507,7 +525,7 @@ if __name__ == '__main__':
         try:
             pages = config['webcrawler']['facebook']['pages']
             random.shuffle(pages)
-            chromeprocess_kwargs = config['webdriver']['chromeprocess']
+            chromeprocess_kwargs = config['webdriver']['chromeprocess'].copy()
             chromeprocess_kwargs.update(config['webcrawler']['facebook']['webdriver']['chromeprocess'])
             jobs.append(threading.Thread(target=facebook_crawler(
                 chromeprocess_kwargs=chromeprocess_kwargs,

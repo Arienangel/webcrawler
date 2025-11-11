@@ -103,17 +103,17 @@ class Post:
         location = re.search(r'※ 發信站: 批踢踢實業坊\(ptt\.cc\), 來自: (.+) \((.+)\)\s※ 文章網址', text)
         if location:
             self.ip, self.country = location.groups()
-        year, month = self.time.year, self.time.month
+        last_comment_year, last_comment_month = self.time.year, self.time.month
         for floor, c in enumerate(response.select('div#main-content > div.push'), 1):
             try:
                 comment = Comment(self.forum, self, floor)
                 comment.reaction = c.select('span.push-tag')[0].text.strip()
                 comment.author.id = c.select('span.push-userid')[0].text
                 comment.content = c.select('span.push-content')[0].text.lstrip(': ')
-                time = c.select('span.push-ipdatetime')[0].text.strip()
-                if int(time[:2]) < month: year += 1
-                comment.time = dateutil.parser.parse(f'{year}/{time} +08:00')
-                month = comment.time.year
+                month_day = c.select('span.push-ipdatetime')[0].text.strip()
+                if int(month_day[:2]) < last_comment_month: last_comment_year += 1
+                comment.time = dateutil.parser.parse(f'{last_comment_year}/{month_day} +08:00')
+                last_comment_month = comment.time.month
                 self.comments.append(comment)
                 self._logger.debug(f'Extract comment: {comment.__repr__()}')
             except Exception as E:

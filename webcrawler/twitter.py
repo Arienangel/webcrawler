@@ -147,7 +147,7 @@ class User:
 class Tweet:
 
     def __init__(self, user: User = None, id: int = None):
-        self.user: User = user
+        self.user: User = user or User()
         self.id: int = id
         self.created_time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
         self.content: str = ''

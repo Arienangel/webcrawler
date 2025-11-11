@@ -41,7 +41,7 @@ class Search:
             while not stop_event.is_set():
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
                 self._logger.info(f'Connect: {self.api_url} {self.api_body}')
-                if response.headers['Content-Type'] != 'application/json':
+                if 'application/json' not in response.headers['Content-Type']:
                     self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
                     stop_event.set()
                     return
@@ -66,10 +66,10 @@ class Search:
                                 user.avatar = u['avatar']
                                 user.premium = u['premium']
                                 if u['date_of_birth']:
-                                    user.brithday = dateutil.parser.parse(u['date_of_birth'])
+                                    user.birthday = dateutil.parser.parse(u['date_of_birth'])
                                 user.status = u['status']
                                 user.name_color = u['name_color']
-                                user.brithday_privacy = u['bday_privacy']
+                                user.birthday_privacy = u['bday_privacy']
                                 user.has_profile_image = u['has_profile_image']
                                 user.timeline_privacy = u['timeline_privacy']
                                 user.gender = u['gender']
@@ -224,10 +224,10 @@ class Post:
                                 user.avatar = u['avatar']
                                 user.premium = u['premium']
                                 if u['date_of_birth']:
-                                    user.brithday = dateutil.parser.parse(u['date_of_birth'])
+                                    user.birthday = dateutil.parser.parse(u['date_of_birth'])
                                 user.status = u['status']
                                 user.name_color = u['name_color']
-                                user.brithday_privacy = u['bday_privacy']
+                                user.birthday_privacy = u['bday_privacy']
                                 user.has_profile_image = u['has_profile_image']
                                 user.timeline_privacy = u['timeline_privacy']
                                 user.gender = u['gender']

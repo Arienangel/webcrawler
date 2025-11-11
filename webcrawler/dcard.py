@@ -93,7 +93,7 @@ class Forum:
                 self.enable_edited_history = response['enableEditedHistory']
                 self.enable_immersive_video = response['enableImmersiveVideo']
                 self.discussion_volume = response['discussionVolume']
-                self.latest_post_pinned_at = dateutil.parser.parse(response['latestPostPinnedAt']) if response['latestPostPinnedAt'] in response else ''
+                self.latest_post_pinned_at = dateutil.parser.parse(response['latestPostPinnedAt']) if 'latestPostPinnedAt' in response else datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
             except:
                 return
 
