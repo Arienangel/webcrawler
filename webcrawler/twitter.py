@@ -44,60 +44,57 @@ class User:
                     repeat_delay=1 + random.random(),
                 )
 
-        def read_received():
-            while not stop_event.is_set():
-                time.sleep(0.01)
-                tweets = []
-                if len(listener1.queue):
-                    r = listener1.get()
-                    time.sleep(1)
-                    response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
-                    if response['data']['user']['result']['timeline']['timeline']['instructions'][0]['type'] == 'TimelineClearCache': del response['data']['user']['result']['timeline']['timeline']['instructions'][0]
-                    self._parse(response['data']['user']['result']['timeline']['timeline']['instructions'][0]['entry']['content']['itemContent']['tweet_results']['result']['core']['user_results']['result'])
-                    tweets = response['data']['user']['result']['timeline']['timeline']['instructions'][1]['entries']
-                for p in tweets:
-                    try:
-                        if ('profile-conversation' in p['entryId']) or ('tweet' in p['entryId']):
-                            if 'items' in p['content']: p = p['content']['items'][0]['item']['itemContent']['tweet_results']['result']
-                            elif 'itemContent' in p['content']: p = p['content']['itemContent']['tweet_results']['result']
-                        else:
-                            continue
-                        tweet = Tweet(self)
-                        tweet._parse(p)
-                        if 'retweeted_status_result' in p['legacy']:
-                            if int(p['legacy']['retweeted_status_result']['result']['core']['user_results']['result']['rest_id']) == tweet.user.id:
-                                source_user = tweet.user
-                            else:
-                                source_user = User()
-                                source_user._parse(p['legacy']['retweeted_status_result']['result']['core']['user_results']['result'])
-                            source_tweet = Tweet(source_user)
-                            source_tweet._parse(p['legacy']['retweeted_status_result']['result'])
-                            tweet.retweeted_from = source_tweet
-                        else:
-                            tweet.retweeted_from = None
-                        if 'quoted_status_result' in p:
-                            if int(p['quoted_status_result']['result']['core']['user_results']['result']['rest_id']) == tweet.user.id:
-                                quoted_user = tweet.user
-                            else:
-                                quoted_user = User()
-                                quoted_user._parse(p['quoted_status_result']['result']['core']['user_results']['result'])
-                            quoted_tweet = Tweet(quoted_user)
-                            quoted_tweet._parse(p['quoted_status_result']['result'])
-                            tweet.quoted_from = quoted_tweet
-                        else:
-                            tweet.quoted_from = None
-                        self.tweets.append(tweet)
-                        self._logger.debug(f'Extract post: {tweet.__repr__()}')
-                    except Exception as E:
-                        self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
+        def on_listener1(r: dict):
+            time.sleep(1)
+            response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
+            if response['data']['user']['result']['timeline']['timeline']['instructions'][0]['type'] == 'TimelineClearCache': del response['data']['user']['result']['timeline']['timeline']['instructions'][0]
+            self._parse_userdata(response['data']['user']['result']['timeline']['timeline']['instructions'][0]['entry']['content']['itemContent']['tweet_results']['result']['core']['user_results']['result'])
+            tweets = response['data']['user']['result']['timeline']['timeline']['instructions'][1]['entries']
+            extract_tweets(tweets)
+
+        def extract_tweets(tweets: list):
+            for p in tweets:
+                try:
+                    if ('profile-conversation' in p['entryId']) or ('tweet' in p['entryId']):
+                        if 'items' in p['content']: p = p['content']['items'][0]['item']['itemContent']['tweet_results']['result']
+                        elif 'itemContent' in p['content']: p = p['content']['itemContent']['tweet_results']['result']
+                    else:
                         continue
+                    tweet = Tweet(self)
+                    tweet._parse(p)
+                    if 'retweeted_status_result' in p['legacy']:
+                        if int(p['legacy']['retweeted_status_result']['result']['core']['user_results']['result']['rest_id']) == tweet.user.id:
+                            source_user = tweet.user
+                        else:
+                            source_user = User()
+                            source_user._parse_userdata(p['legacy']['retweeted_status_result']['result']['core']['user_results']['result'])
+                        source_tweet = Tweet(source_user)
+                        source_tweet._parse(p['legacy']['retweeted_status_result']['result'])
+                        tweet.retweeted_from = source_tweet
+                    else:
+                        tweet.retweeted_from = None
+                    if 'quoted_status_result' in p:
+                        if int(p['quoted_status_result']['result']['core']['user_results']['result']['rest_id']) == tweet.user.id:
+                            quoted_user = tweet.user
+                        else:
+                            quoted_user = User()
+                            quoted_user._parse_userdata(p['quoted_status_result']['result']['core']['user_results']['result'])
+                        quoted_tweet = Tweet(quoted_user)
+                        quoted_tweet._parse(p['quoted_status_result']['result'])
+                        tweet.quoted_from = quoted_tweet
+                    else:
+                        tweet.quoted_from = None
+                    self.tweets.append(tweet)
+                    self._logger.debug(f'Extract post: {tweet.__repr__()}')
+                except Exception as E:
+                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
+                    continue
 
         if stop_event is None: stop_event = threading.Event()
-        listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/UserTweets')
+        listener1 = browser.cdp.add_listener(on_listener1, name=f'Listener 1: {self.__repr__()}', cdp_method='Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/UserTweets')
         end_time = time.time() + timeout
         if isinstance(time_until, str): time_until = dateutil.parser.parse(time_until)
         if do_navigate: threading.Thread(target=load_page).start()
-        threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
                 time.sleep(0.01)
@@ -110,10 +107,10 @@ class User:
                     return
         finally:
             stop_event.set()
-            listener1.shutdown()
+            browser.cdp.remove_listener(listener1)
             self._logger.debug(f'#Posts: {len(self.tweets)}')
 
-    def _parse(self, user_data: dict):
+    def _parse_userdata(self, user_data: dict):
         self.id = int(user_data['rest_id'])
         self.name = user_data['core']['name']
         self.alias = user_data['core']['screen_name']
@@ -181,50 +178,45 @@ class Tweet:
                     repeat_delay=0.5 + random.random(),
                 )
 
-        def read_received():
-            while not stop_event.is_set():
-                time.sleep(0.01)
-                if len(listener1.queue):
-                    r = listener1.get()
-                    time.sleep(1)
-                    response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
-                    self._parse(response['data']['tweetResult']['result'])
-                elif len(listener2.queue):
-                    r = listener2.get()
-                    time.sleep(1)
-                    response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
-                    if response['data']['threaded_conversation_with_injections_v2']['instructions'][0]['type'] == 'TimelineClearCache': del response['data']['threaded_conversation_with_injections_v2']['instructions'][0]
-                    comments = response['data']['threaded_conversation_with_injections_v2']['instructions'][0]['entries']
-                    for c in comments:
-                        try:
-                            if 'tweet' in c['entryId']:
-                                if 'items' in c['content']: c = c['content']['items'][0]['item']['itemContent']['tweet_results']['result']
-                                elif 'itemContent' in c['content']: c = c['content']['itemContent']['tweet_results']['result']
-                                self._parse(c)
-                            elif 'conversationthread' in c['entryId']:
-                                if 'items' in c['content']: c = c['content']['items'][0]['item']['itemContent']['tweet_results']['result']
-                                elif 'itemContent' in c['content']: c = c['content']['itemContent']['tweet_results']['result']
-                                if int(c['core']['user_results']['result']['rest_id']) == self.user.id:
-                                    user = self.user
-                                else:
-                                    user = User()
-                                    user._parse(c['core']['user_results']['result'])
-                                comment = Tweet(user)
-                                comment._parse(c)
-                                self.comments.append(comment)
-                                self._logger.debug(f'Extract comment: {comment.__repr__()}')
-                            else:
-                                continue
-                        except Exception as E:
-                            self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
-                            continue
+        def on_listener1(r: dict):
+            time.sleep(1)
+            response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
+            self._parse(response['data']['tweetResult']['result'])
+
+        def on_listener2(r: dict):
+            time.sleep(1)
+            response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
+            if response['data']['threaded_conversation_with_injections_v2']['instructions'][0]['type'] == 'TimelineClearCache': del response['data']['threaded_conversation_with_injections_v2']['instructions'][0]
+            comments = response['data']['threaded_conversation_with_injections_v2']['instructions'][0]['entries']
+            for c in comments:
+                try:
+                    if 'tweet' in c['entryId']:
+                        if 'items' in c['content']: c = c['content']['items'][0]['item']['itemContent']['tweet_results']['result']
+                        elif 'itemContent' in c['content']: c = c['content']['itemContent']['tweet_results']['result']
+                        self._parse(c)
+                    elif 'conversationthread' in c['entryId']:
+                        if 'items' in c['content']: c = c['content']['items'][0]['item']['itemContent']['tweet_results']['result']
+                        elif 'itemContent' in c['content']: c = c['content']['itemContent']['tweet_results']['result']
+                        if int(c['core']['user_results']['result']['rest_id']) == self.user.id:
+                            user = self.user
+                        else:
+                            user = User()
+                            user._parse_userdata(c['core']['user_results']['result'])
+                        comment = Tweet(user)
+                        comment._parse(c)
+                        self.comments.append(comment)
+                        self._logger.debug(f'Extract comment: {comment.__repr__()}')
+                    else:
+                        continue
+                except Exception as E:
+                    self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
+                    continue
 
         if stop_event is None: stop_event = threading.Event()
-        listener1 = browser.cdp.add_listener(f'Listener 1: {self.__repr__()}', 'Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/TweetResultByRestId')
-        listener2 = browser.cdp.add_listener(f'Listener 2: {self.__repr__()}', 'Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/TweetDetail')
+        listener1 = browser.cdp.add_listener(on_listener1, name=f'Listener 1: {self.__repr__()}', cdp_method='Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/TweetResultByRestId')
+        listener2 = browser.cdp.add_listener(on_listener2, name=f'Listener 2: {self.__repr__()}', cdp_method='Network.responseReceived', resource_type='XHR', url_regex=r'graphql/.+/TweetDetail')
         end_time = time.time() + timeout
         if do_navigate: threading.Thread(target=load_page).start()
-        threading.Thread(target=read_received).start()
         try:
             while time.time() < end_time:
                 time.sleep(0.01)
@@ -236,8 +228,8 @@ class Tweet:
                     return
         finally:
             stop_event.set()
-            listener1.shutdown()
-            listener2.shutdown()
+            browser.cdp.remove_listener(listener1)
+            browser.cdp.remove_listener(listener2)
             self._logger.debug(f'#Comments: {len(self.comments)}')
 
     def _parse(self, tweet_data: dict):

@@ -1,12 +1,12 @@
 import atexit
 import json
 import logging
-import queue
 import random
 import re
 import subprocess
 import threading
 import time
+import uuid
 from collections import defaultdict
 
 import requests
@@ -184,7 +184,7 @@ class CDP:
         if blocking: time.sleep(max(abs(x_distance), abs(y_distance)) / speed * count + repeat_delay * (count - 1))
 
     def send(self, method: str, **params):
-        id = self._get_id()
+        id = self._generate_cdp_request_id()
         payload = json.dumps({'id': id, 'method': method, 'params': params})
         self.websocket.send(payload)
         return id
@@ -203,7 +203,7 @@ class CDP:
         else:
             raise ValueError(f'{id = } not found')
 
-    def add_listener(self, name: str, cdp_method: str = None, request_id: str = None, resource_type: str = None, url_exact: str = None, url_contain: str = None, url_regex: str = None, status_code: int = None):
+    def add_listener(self, callback, name: str = None, cdp_method: str = None, request_id: str = None, resource_type: str = None, url_exact: str = None, url_contain: str = None, url_regex: str = None, status_code: int = None):
 
         def listener(response: dict):
             check = []
@@ -218,13 +218,23 @@ class CDP:
             except:
                 return
             if all(check):
-                q.put(response)
+                self._logger.debug(f'Run listener callback: {name}')
+                job = threading.Thread(target=callback, args=(response, ))
+                self._listeners[name]['jobs'].append(job)
+                job.start()
 
-        q = queue.Queue()
-        q.name = name
-        self._listeners.update({q: listener})
-        self._logger.debug(f'Add network listener: {q.name}')
-        return q
+        name = name or str(uuid.uuid4())
+        self._listeners[name] = {'fn': listener, 'jobs': []}
+        self._logger.debug(f'Add network listener: {name}')
+        return name
+
+    def remove_listener(self, name: str, timeout: float = None):
+        if name in self._listeners:
+            for job in self._listeners[name]['jobs']: job.join(timeout)
+            self._listeners.pop(name)
+            self._logger.debug(f'Remove network listener: {name}')
+        else:
+            self._logger.warning(f'Network listener not found: {name}')
 
     def _recv(self):
         while self._running:
@@ -232,22 +242,18 @@ class CDP:
                 data = defaultdict(lambda: None)
                 data.update(json.loads(self.websocket.recv()))
                 self.received.append(data)
-                for q, listener in self._listeners.items():
-                    try:
-                        listener(data)
-                    except queue.ShutDown:
-                        del self._listeners[q]
-                        self._logger.debug(f'Remove network listener: {q.name}')
+                for listener in self._listeners.values():
+                    listener['fn'](data)
             except:
                 if self._running:
                     continue
                 else:
                     return
 
-    def _get_id(self):
+    def _generate_cdp_request_id(self):
         i = random.randint(0, 2**16 - 1)
         if i in self._used_id:
-            self._get_id()
+            return self._generate_cdp_request_id()
         else:
             self._used_id.add(i)
             return i
@@ -260,7 +266,5 @@ class CDP:
 
     def stop(self):
         self._running = False
-        for q in self._listeners.keys():
-            if not q.is_shutdown:
-                q.shutdown()
+        self._listeners.clear()
         self.websocket.close()
