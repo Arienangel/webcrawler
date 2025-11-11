@@ -52,7 +52,7 @@ class Forum:
                 time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(1)
+                    time.sleep(3)
                     try:
                         response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                         self.id = response['id']
@@ -102,7 +102,7 @@ class Forum:
                         continue
                 if len(listener2.queue):
                     r = listener2.get()
-                    time.sleep(1)
+                    time.sleep(3)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     for widget in response['widgets']:
                         if 'forumList' in widget:
@@ -244,7 +244,7 @@ class Post:
                 time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(1)
+                    time.sleep(3)
                     response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features="html.parser")
                     for r in response.find_all('script', type="application/ld+json"):
                         try:
@@ -265,7 +265,7 @@ class Post:
                             continue
                 if len(listener2.queue):
                     r = listener2.get()
-                    time.sleep(1)
+                    time.sleep(3)
                     try:
                         response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                         self.title = response['title']
@@ -332,7 +332,7 @@ class Post:
                         continue
                 if len(listener3.queue):
                     r = listener3.get()
-                    time.sleep(1)
+                    time.sleep(3)
                     response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                     for c in response['items']:
                         try:

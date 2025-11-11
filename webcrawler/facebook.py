@@ -54,8 +54,17 @@ class Page:
                 posts = []
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(2)
-                    response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
+                    for _ in range(3):
+                        try:
+                            time.sleep(3)
+                            response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
+                            break
+                        except ValueError:
+                            continue
+                    else:
+                        self._logger.warning(f'Get Facebook forum failed')
+                        stop_event.set()
+                        return
                     for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
                         try:
                             for i in json.loads(r.text)['require'][0][3][0]['__bbox']['require']:
@@ -69,12 +78,12 @@ class Page:
                             pass
                 elif len(listener2.queue):
                     r = listener2.get()
-                    time.sleep(2)
+                    time.sleep(3)
                     try:
                         response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
                         L = [json.loads(i) for i in response.split('\n')]
                         posts = []
-                        if 'node' in L[0]: posts.append(L[0]['data']['node']['timeline_list_feed_units']['edges'][0]['node'])
+                        if 'node' in L[0]['data']: posts.append(L[0]['data']['node']['timeline_list_feed_units']['edges'][0]['node'])
                         posts.extend([i['data']['node'] for i in L[1:] if 'node' in i['data']])
                     except:
                         pass
@@ -166,7 +175,7 @@ class Post:
                 time.sleep(0.01)
                 if len(listener1.queue):
                     r = listener1.get()
-                    time.sleep(2)
+                    time.sleep(3)
                     response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
                     for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
                         try:
