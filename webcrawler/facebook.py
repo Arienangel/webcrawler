@@ -33,7 +33,7 @@ class Page:
 
         def load_page():
             browser.get(self.url)
-            self._logger.info(f'Connect: {self.url}')
+            self._logger.debug(f'Connect: {self.url}')
             time.sleep(5)
             while not stop_event.is_set():
                 browser.cdp.send('Runtime.evaluate', expression='''document.querySelector('div[role="dialog"] i.x1b0d499.x1d69dk1').click()''')
@@ -49,17 +49,10 @@ class Page:
                 )
 
         def on_listener1(r: dict):
-            for _ in range(3):
-                try:
-                    time.sleep(3)
-                    response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
-                    break
-                except ValueError:
-                    continue
-            else:
-                self._logger.warning(f'Get Facebook forum failed')
-                stop_event.set()
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener1 timeout')
                 return
+            response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
             for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
                 try:
                     for i in json.loads(r.text)['require'][0][3][0]['__bbox']['require']:
@@ -69,19 +62,23 @@ class Page:
                     self.id = int(posts[0]['comet_sections']['content']['story']['actors'][0]['id'])
                     self.alias = posts[0]['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1]
                     self.name = posts[0]['comet_sections']['content']['story']['actors'][0]['name']
-                except:
+                except Exception as E:
+                    self._logger.warning(f'Extract page failed: {type(E)}:{E.args}')
                     pass
             extract_posts(posts)
 
         def on_listener2(r: dict):
-            time.sleep(3)
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener2 timeout')
+                return
             try:
                 response = browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body']
                 L = [json.loads(i) for i in response.split('\n')]
                 posts = []
                 if 'node' in L[0]['data']: posts.append(L[0]['data']['node']['timeline_list_feed_units']['edges'][0]['node'])
                 posts.extend([i['data']['node'] for i in L[1:] if 'node' in i['data']])
-            except:
+            except Exception as E:
+                self._logger.warning(f'Extract page failed: {type(E)}:{E.args}')
                 pass
             extract_posts(posts)
 
@@ -104,7 +101,7 @@ class Page:
                     self.posts.append(post)
                     self._logger.debug(f'Extract post: {post.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
+                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
                     continue
 
         if stop_event is None: stop_event = threading.Event()
@@ -154,7 +151,7 @@ class Post:
 
         def load_page():
             browser.get(self.url)
-            self._logger.info(f'Connect: {self.url}')
+            self._logger.debug(f'Connect: {self.url}')
             time.sleep(5)
             while not stop_event.is_set():
                 browser.scroll(
@@ -169,7 +166,9 @@ class Post:
                 )
 
         def on_listener1(r: dict):
-            time.sleep(3)
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener1 timeout')
+                return
             response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features='html.parser')
             for r in response.find_all('script', type='application/json', string=re.compile(r'"post_id"')):
                 try:
@@ -212,7 +211,8 @@ class Post:
                     self.video_override_url = post['comet_sections']['timestamp']['video_override_url']
                     self.unpublished_content_type = post['comet_sections']['timestamp']['story']['unpublished_content_type']
                     self.ghl_label = post['comet_sections']['timestamp']['story']['ghl_label']
-                except:
+                except Exception as E:
+                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
                     pass
             for c in post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comment_list_renderer']['feedback']['comment_rendering_instance_for_feed_location']['comments']['edges']:
                 try:
@@ -280,7 +280,7 @@ class Post:
                     self.comments.append(comment)
                     self._logger.debug(f'Extract comment: {comment.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
+                    self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}')
                     continue
             if len(self.comments) == 0:
                 stop_event.set()

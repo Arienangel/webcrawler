@@ -97,7 +97,7 @@ class dcard_crawler:
 
     def notify(self, posts: list[dcard.Post], tz=pytz.UTC):
         for post in posts:
-            self.notifier.send(tag=['default', 'dcard', f'dcard/{post.forum.alias}'], title=f'[Dcard] {post.forum.name}', body=f'{post.author.school} {post.author.department}\n---\n{post.title}\n{post.content}\n---\n{post.created_time.astimezone(tz).strftime("%Y/%m/%d %H:%M:%S %:z")}\n{post.url}')
+            self.notifier.send(tag=['default', 'dcard', f'dcard/{post.forum.alias}'], title=f'[Dcard] {post.forum.name or post.forum.alias}', body=f'{post.author.school} {post.author.department}\n---\n{post.title}\n{post.content}\n---\n{post.created_time.astimezone(tz).strftime("%Y/%m/%d %H:%M:%S %:z")}\n{post.url}')
 
     def write_posts_db(self, posts: list[dcard.Post], db_path: str):
         with sqlite3.connect(db_path) as db:
@@ -211,7 +211,7 @@ class facebook_crawler:
 
     def notify(self, posts: list[facebook.Post], tz=pytz.UTC):
         for post in posts:
-            self.notifier.send(tag=['default', 'facebook', f'facebook/{post.page.id}', f'facebook/{post.page.alias}'], title=f'[Facebook] {post.page.name}', body=f'{post.title}\n{post.content}\n---\n{post.created_time.astimezone(tz).strftime("%Y/%m/%d %H:%M:%S %:z")}\n{post.url}')
+            self.notifier.send(tag=['default', 'facebook', f'facebook/{post.page.id}', f'facebook/{post.page.alias}'], title=f'[Facebook] {post.page.name or post.page.alias}', body=f'{post.title}\n{post.content}\n---\n{post.created_time.astimezone(tz).strftime("%Y/%m/%d %H:%M:%S %:z")}\n{post.url}')
 
     def write_posts_db(self, posts: list[facebook.Post], db_path: str):
         with sqlite3.connect(db_path) as db:

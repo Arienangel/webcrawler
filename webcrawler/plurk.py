@@ -40,7 +40,7 @@ class Search:
         def load_page():
             while not stop_event.is_set():
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
-                self._logger.info(f'Connect: {self.api_url} {self.api_body}')
+                self._logger.debug(f'Connect: {self.api_url} {self.api_body}')
                 if 'application/json' not in response.headers['Content-Type']:
                     self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
                     stop_event.set()
@@ -90,7 +90,8 @@ class Search:
                                 user.recruited = u['recruited']
                                 user.show_ads = u['show_ads']
                                 self.users.update({user.id: user})
-                            except:
+                            except Exception as E:
+                                self._logger.warning(f'Extract user failed: {type(E)}:{E.args}')
                                 continue
                     for p in response['plurks']:
                         if len(self.posts):
@@ -134,7 +135,7 @@ class Search:
                             self.posts.append(post)
                             self._logger.debug(f'Extract post: {post.__repr__()}')
                         except Exception as E:
-                            self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
+                            self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
                             continue
                     try:
                         next_id.put(self.posts[-1].id)
@@ -197,7 +198,7 @@ class Post:
         def load_page():
             while not stop_event.is_set():
                 response = session.post(self.api_url, self.api_body, timeout=timeout)
-                self._logger.info(f'Connect: {self.api_url} {self.api_body}')
+                self._logger.debug(f'Connect: {self.api_url} {self.api_body}')
                 if response.headers['Content-Type'] != 'application/json':
                     self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
                     stop_event.set()
@@ -238,7 +239,8 @@ class Post:
                                 user.friend_list_privacy = u['friend_list_privacy']
                                 user.show_location = u['show_location']
                                 self.users.update({user.id: user})
-                            except:
+                            except Exception as E:
+                                self._logger.warning(f'Extract user failed: {type(E)}:{E.args}')
                                 continue
                     for c in response['responses']:
                         if len(self.comments):
@@ -268,7 +270,7 @@ class Post:
                             self.comments.append(comment)
                             self._logger.debug(f'Extract comment: {comment.__repr__()}')
                         except Exception as E:
-                            self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
+                            self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}')
                             continue
                         finally:
                             floor += 1

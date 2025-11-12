@@ -51,9 +51,9 @@ class ChromeDriver(webdriver.Chrome):
             self.options.add_argument(option)
         for name, value in experimental_options.items():
             self.options.add_experimental_option(name, value)
-        self._logger.info(f'Chrome options: {" ".join(self.options.arguments)}')
+        self._logger.debug(f'Chrome options: {" ".join(self.options.arguments)}')
         super().__init__(options=self.options, service=self.service)
-        self._logger.info(f'ChromeDriver process: {" ".join(self.service.process.args)}')
+        self._logger.debug(f'ChromeDriver process: {" ".join(self.service.process.args)}')
         if remote_debugging_port:
             self.cdp = CDP(remote_debugging_port=remote_debugging_port)
             self.cdp.send('Network.enable')
@@ -114,7 +114,7 @@ class ChromeProcess:
             self.options.append(option)
         if not self.use_exist:
             self.process = subprocess.Popen(args=self.options, start_new_session=True)
-            self._logger.info(f'Chrome process: {" ".join(self.process.args)}')
+            self._logger.debug(f'Chrome process: {" ".join(self.process.args)}')
         if remote_debugging_port:
             self.cdp = CDP(remote_debugging_host=remote_debugging_host, remote_debugging_port=remote_debugging_port)
             self.cdp.send('Network.enable')
@@ -162,7 +162,7 @@ class CDP:
                     continue
             else:
                 raise TimeoutError(f'Failed to connect http://{self.remote_debugging_host}:{self.remote_debugging_port}/json')
-        self._logger.info(f'CDP websocket url: {self.websocket_url}')
+        self._logger.debug(f'CDP websocket url: {self.websocket_url}')
         self.websocket = websocket.create_connection(self.websocket_url)
         self.received = list()
         self._used_id = set()
@@ -193,7 +193,7 @@ class CDP:
         self.websocket.send(payload)
         return id
 
-    def get_received_by_id(self, id: int, timeout=5):
+    def get_received_by_id(self, id: int, timeout=10):
         start_idx = 0
         end_time = time.time() + timeout
         while time.time() < end_time:
@@ -206,6 +206,30 @@ class CDP:
                 continue
         else:
             raise ValueError(f'{id = } not found')
+
+    def check_loading_finished(self, request_id: str, blocking: bool = False, timeout: float = 10):
+        if blocking:
+            start_idx = 0
+            end_time = time.time() + timeout
+            while time.time() < end_time:
+                try:
+                    r = self.received[start_idx]
+                    if r['method'] == 'Network.loadingFinished':
+                        if r['params']['requestId'] == request_id:
+                            return True
+                    start_idx += 1
+                except:
+                    time.sleep(0.1)
+                    continue
+            else:
+                return False
+        else:
+            for r in self.received:
+                if r['method'] == 'Network.loadingFinished':
+                    if r['params']['requestId'] == request_id:
+                        return True
+            else:
+                return False
 
     def add_listener(self, callback, name: str = None, cdp_method: str = None, request_id: str = None, resource_type: str = None, url_exact: str = None, url_contain: str = None, url_regex: str = None, status_code: int = None):
 
@@ -272,5 +296,6 @@ class CDP:
     def stop(self):
         self._running = False
         self.websocket.close()
-        for listener in self._listeners.keys():
-            self.remove_listener(listener)
+        while len(self._listeners) > 0:
+            for listener in tuple(self._listeners.keys()):
+                self.remove_listener(listener)

@@ -31,7 +31,7 @@ class Forum:
 
         def load_page():
             browser.get(self.url)
-            self._logger.info(f'Connect: {self.url}')
+            self._logger.debug(f'Connect: {self.url}')
             time.sleep(8)
             while not stop_event.is_set():
                 if 'https://challenges.cloudflare.com/turnstile' in browser.page_source:
@@ -48,7 +48,9 @@ class Forum:
                 )
 
         def on_listener1(r: dict):
-            time.sleep(3)
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener1 timeout')
+                return
             try:
                 response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                 self.id = response['id']
@@ -94,11 +96,14 @@ class Forum:
                 self.enable_immersive_video = response['enableImmersiveVideo']
                 self.discussion_volume = response['discussionVolume']
                 self.latest_post_pinned_at = dateutil.parser.parse(response['latestPostPinnedAt']) if 'latestPostPinnedAt' in response else datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
-            except:
+            except Exception as E:
+                self._logger.warning(f'Extract forum failed: {type(E)}:{E.args}')
                 return
 
         def on_listener2(r: dict):
-            time.sleep(3)
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener2 timeout')
+                return
             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
             for widget in response['widgets']:
                 if 'forumList' in widget:
@@ -168,7 +173,7 @@ class Forum:
                         self.posts.append(post)
                         self._logger.debug(f'Extract post: {post.__repr__()}')
                     except Exception as E:
-                        self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
+                        self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
                         continue
 
         if stop_event is None: stop_event = threading.Event()
@@ -217,7 +222,7 @@ class Post:
 
         def load_page():
             browser.get(self.url)
-            self._logger.info(f'Connect: {self.url}')
+            self._logger.debug(f'Connect: {self.url}')
             time.sleep(8)
             while not stop_event.is_set():
                 if 'https://challenges.cloudflare.com/turnstile' in browser.page_source:
@@ -235,11 +240,14 @@ class Post:
                 )
 
         def on_listener1(r: dict):
-            time.sleep(3)
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener1 timeout')
+                return
             response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features="html.parser")
             for r in response.find_all('script', type="application/ld+json"):
                 try:
                     r = json.loads(r.text)
+                    if 'headline' not in r: continue
                     self.title = r['headline']
                     self.content = r['text']
                     self.created_time = dateutil.parser.parse(r['datePublished'])
@@ -252,10 +260,14 @@ class Post:
                     self.like_count = r['interactionStatistic'][0]['userInteractionCount']
                     self.comment_count = r['interactionStatistic'][1]['userInteractionCount']
                     self.share_count = r['interactionStatistic'][2]['userInteractionCount']
-                except:
+                except Exception as E:
+                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
                     continue
+
         def on_listener2(r: dict):
-            time.sleep(3)
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener2 timeout')
+                return
             try:
                 response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                 self.title = response['title']
@@ -318,10 +330,14 @@ class Post:
                 self.excerpt_comments = response['excerptComments']
                 self.in_review = response['inReview']
                 self.activity_avatar = response['activityAvatar']
-            except:
+            except Exception as E:
+                self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
                 return
+
         def on_listener3(r: dict):
-            time.sleep(3)
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener3 timeout')
+                return
             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
             for c in response['items']:
                 try:
@@ -367,7 +383,7 @@ class Post:
                     self.comments.append(comment)
                     self._logger.debug(f'Extract comment: {comment.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
+                    self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}')
                     continue
             if len(self.comments) == 0:
                 stop_event.set()

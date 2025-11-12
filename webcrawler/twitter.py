@@ -31,7 +31,7 @@ class User:
 
         def load_page():
             browser.get(self.url)
-            self._logger.info(f'Connect: {self.url}')
+            self._logger.debug(f'Connect: {self.url}')
             time.sleep(5)
             while not stop_event.is_set():
                 browser.scroll(
@@ -45,7 +45,9 @@ class User:
                 )
 
         def on_listener1(r: dict):
-            time.sleep(1)
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener1 timeout')
+                return
             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
             if response['data']['user']['result']['timeline']['timeline']['instructions'][0]['type'] == 'TimelineClearCache': del response['data']['user']['result']['timeline']['timeline']['instructions'][0]
             self._parse_userdata(response['data']['user']['result']['timeline']['timeline']['instructions'][0]['entry']['content']['itemContent']['tweet_results']['result']['core']['user_results']['result'])
@@ -87,7 +89,7 @@ class User:
                     self.tweets.append(tweet)
                     self._logger.debug(f'Extract post: {tweet.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
+                    self._logger.warning(f'Extract tweet failed: {type(E)}:{E.args}')
                     continue
 
         if stop_event is None: stop_event = threading.Event()
@@ -165,7 +167,7 @@ class Tweet:
 
         def load_page():
             browser.get(self.url)
-            self._logger.info(f'Connect: {self.url}')
+            self._logger.debug(f'Connect: {self.url}')
             time.sleep(5)
             while not stop_event.is_set():
                 browser.scroll(
@@ -179,12 +181,16 @@ class Tweet:
                 )
 
         def on_listener1(r: dict):
-            time.sleep(1)
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener1 timeout')
+                return
             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
             self._parse(response['data']['tweetResult']['result'])
 
         def on_listener2(r: dict):
-            time.sleep(1)
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener2 timeout')
+                return
             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
             if response['data']['threaded_conversation_with_injections_v2']['instructions'][0]['type'] == 'TimelineClearCache': del response['data']['threaded_conversation_with_injections_v2']['instructions'][0]
             comments = response['data']['threaded_conversation_with_injections_v2']['instructions'][0]['entries']
@@ -209,7 +215,7 @@ class Tweet:
                     else:
                         continue
                 except Exception as E:
-                    self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
+                    self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}')
                     continue
 
         if stop_event is None: stop_event = threading.Event()

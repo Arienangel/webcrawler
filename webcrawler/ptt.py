@@ -29,7 +29,7 @@ class Forum:
         end_time = time.time() + timeout
         while (time.time() < end_time) and (len(self.posts) < min_count):
             response = BeautifulSoup(session.get(url, timeout=timeout).text, features="html.parser")
-            self._logger.info(f'Connect: {url}')
+            self._logger.debug(f'Connect: {url}')
             posts = []
             for p in response.select('div.r-list-container > div'):
                 try:
@@ -57,7 +57,7 @@ class Forum:
                         posts.append(post)
                         self._logger.debug(f'Extract post: {post.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args}: {p}')
+                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
                     continue
             self.posts.extend(posts[::-1])
             next_url = response.select('div#action-bar-container > div.action-bar > div.btn-group-paging')[0].find('a', string='‹ 上頁').get('href')
@@ -92,7 +92,7 @@ class Post:
     def get(self, session: requests.Session, timeout: float = 10):
         session.headers.update({"Cookie": "over18=1"})
         response = BeautifulSoup(session.get(self.url, timeout=timeout).text, features="html.parser")
-        self._logger.info(f'Connect: {self.url}')
+        self._logger.debug(f'Connect: {self.url}')
         header = response.select('div#main-content > div.article-metaline')
         self.author.id, self.author.name = header[0].select('span.article-meta-value')[0].text.split(' ', maxsplit=1)
         self.author.name = self.author.name[1:-1]
@@ -117,7 +117,7 @@ class Post:
                 self.comments.append(comment)
                 self._logger.debug(f'Extract comment: {comment.__repr__()}')
             except Exception as E:
-                self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}: {c}')
+                self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}')
                 continue
         else:
             self._logger.debug(f'#Comments: {len(self.comments)}')
