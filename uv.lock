@@ -854,6 +854,7 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "pyyaml" },
     { name = "requests" },
+    { name = "websocket-client" },
 ]
 
 [package.optional-dependencies]
@@ -881,6 +882,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "selenium", marker = "extra == 'selenium'", specifier = ">=4.36.0" },
+    { name = "websocket-client", specifier = ">=1.8.0" },
 ]
 provides-extras = ["notify", "selenium"]
 
