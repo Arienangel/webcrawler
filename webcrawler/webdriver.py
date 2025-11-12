@@ -124,8 +124,8 @@ class ChromeProcess:
     def page_source(self) -> str:
         return self.cdp.page_source
 
-    def get(self, url: str, **params):
-        self.cdp.get(url, **params)
+    def get(self, url: str, blocking: bool = False, timeout: float = 10, **params):
+        self.cdp.get(url, blocking=blocking, timeout=timeout, **params)
 
     def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25, *, blocking: bool = True, **params):
         self.cdp.scroll(x, y, x_distance, y_distance, speed, count, repeat_delay, blocking=blocking, **params)
@@ -146,7 +146,7 @@ class ChromeProcess:
 
 # https://chromedevtools.github.io/devtools-protocol
 class CDP:
-    _logger = logging.getLogger('ChromeDevToolsProtocol')
+    _logger = logging.getLogger('CDP')
 
     def __init__(self, remote_debugging_host: str = '127.0.0.1', remote_debugging_port: str = 9222, timeout: float = 10):
         self.remote_debugging_host = remote_debugging_host
@@ -180,8 +180,20 @@ class CDP:
         except:
             return ""
 
-    def get(self, url: str, **params):
-        self.send('Page.navigate', url=url, **params)
+    def get(self, url: str, blocking: bool = False, timeout: float = 10, **params):
+        if blocking:
+
+            def callback(r):
+                self.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout)
+                finished_event.set()
+
+            listener = self.add_listener(callback, f'<CDP.get: {url}>', cdp_method='Network.requestWillBeSent', url_exact=url)
+            finished_event = threading.Event()
+            self.send('Page.navigate', url=url, **params)
+            finished_event.wait(timeout=timeout)
+            self.remove_listener(listener)
+        else:
+            self.send('Page.navigate', url=url, **params)
 
     def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25, *, blocking: bool = True, **params):
         self.send('Input.synthesizeScrollGesture', x=x, y=y, xDistance=x_distance, yDistance=y_distance, speed=speed, repeatCount=count - 1, repeatDelayMs=int(repeat_delay * 1000), **params)
@@ -240,9 +252,10 @@ class CDP:
                 if request_id: check.append(response['params']['requestId'] == request_id)
                 if resource_type: check.append(response['params']['type'] == resource_type)
                 if status_code: check.append(response['params']['response']['status'] == status_code)
-                if url_exact: check.append(response['params']['response']['url'] == url_exact)
-                if url_contain: check.append(url_contain in response['params']['response']['url'])
-                if url_regex: check.append(re.search(url_regex, response['params']['response']['url']))
+                url = response['params']['response']['url'] if 'response' in response['params'] else response['params']['request']['url'] if 'request' in response['params'] else ''
+                if url_exact: check.append(url == url_exact)
+                if url_contain: check.append(url_contain in url)
+                if url_regex: check.append(re.search(url_regex, url))
             except:
                 return
             if all(check):
@@ -256,7 +269,7 @@ class CDP:
         self._logger.debug(f'Add network listener: {name}')
         return name
 
-    def remove_listener(self, name: str, timeout: float = None):
+    def remove_listener(self, name: str, timeout: float = 10):
         if name in self._listeners:
             for job in self._listeners[name]['jobs']:
                 job.join(timeout)
