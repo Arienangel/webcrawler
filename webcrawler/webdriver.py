@@ -130,6 +130,12 @@ class ChromeProcess:
     def scroll(self, x: int, y: int, x_distance: int = 0, y_distance: int = 0, speed: int = 800, count: int = 1, repeat_delay: float = 0.25, *, blocking: bool = True, **params):
         self.cdp.scroll(x, y, x_distance, y_distance, speed, count, repeat_delay, blocking=blocking, **params)
 
+    def clear_cache(self):
+        self.cdp.clear_cache()
+
+    def clear_cookies(self):
+        self.cdp.clear_cookies()
+
     def __enter__(self):
         return self
 
@@ -204,6 +210,12 @@ class CDP:
         payload = json.dumps({'id': id, 'method': method, 'params': params})
         self.websocket.send(payload)
         return id
+
+    def clear_cache(self):
+        self.send('Network.clearBrowserCache')
+
+    def clear_cookies(self):
+        self.send('Network.clearBrowserCookies')
 
     def get_received_by_id(self, id: int, timeout=10):
         start_idx = 0

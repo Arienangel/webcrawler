@@ -161,7 +161,7 @@ class Forum:
                         post.media_meta = p['mediaMeta']
                         post.edited = p['edited']
                         post.links = p['links'] if 'links' in p else []
-                        post.identity_idV3 = p['identityIdV3']
+                        post.identity_idV3 = p['identityIdV3'] if 'identityIdV3' in p else ''
                         post.enable_list_link_preview = p['enableListLinkPreview'] if 'enableListLinkPreview' in p else None
                         post.post_avatar = p['postAvatar']
                         post.previews = p['previews']
@@ -321,7 +321,7 @@ class Post:
                 self.media_meta = response['mediaMeta']
                 self.edited = response['edited']
                 self.links = response['links'] if 'links' in response else []
-                self.identity_idV3 = response['identityIdV3']
+                self.identity_idV3 = response['identityIdV3'] if 'identityIdV3' in response else ''
                 self.enable_list_link_preview = response['enableListLinkPreview'] if 'enableListLinkPreview' in response else None
                 self.post_avatar = response['postAvatar']
                 self.previews = response['previews']

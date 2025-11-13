@@ -63,6 +63,7 @@ class dcard_crawler:
         forum_get_kwargs = forum_get_kwargs or {}
         post_get_kwargs = post_get_kwargs or {}
         try:
+            self.browser.clear_cache()
             self.browser.get('https://www.dcard.tw/f', referrer='https://www.google.com/', blocking=True, timeout=10)
             time.sleep(10)
             for forum in forums:
@@ -177,6 +178,7 @@ class facebook_crawler:
         page_get_kwargs = page_get_kwargs or {}
         post_get_kwargs = post_get_kwargs or {}
         try:
+            self.browser.clear_cache()
             self.browser.get('https://www.facebook.com/', referrer='https://www.google.com/', blocking=True, timeout=10)
             time.sleep(10)
             for page in pages:
