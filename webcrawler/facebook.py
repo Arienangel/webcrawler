@@ -5,6 +5,7 @@ import random
 import re
 import threading
 import time
+import traceback
 
 import dateutil
 import pytz
@@ -64,6 +65,7 @@ class Page:
                     self.name = posts[0]['comet_sections']['content']['story']['actors'][0]['name']
                 except Exception as E:
                     self._logger.warning(f'Listener1 extract page failed: {type(E)}:{E.args}')
+                    self._logger.debug(traceback.format_exc())
                     pass
             extract_posts(posts)
 
@@ -79,6 +81,7 @@ class Page:
                 posts.extend([i['data']['node'] for i in L[1:] if 'node' in i['data']])
             except Exception as E:
                 self._logger.warning(f'Listener2 extract page failed: {type(E)}:{E.args}')
+                self._logger.debug(traceback.format_exc())
                 pass
             extract_posts(posts)
 
@@ -102,6 +105,7 @@ class Page:
                     self._logger.debug(f'Extract post: {post.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
+                    self._logger.debug(traceback.format_exc())
                     continue
 
         if stop_event is None: stop_event = threading.Event()
@@ -213,6 +217,7 @@ class Post:
                     self.ghl_label = post['comet_sections']['timestamp']['story']['ghl_label']
                 except Exception as E:
                     self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
+                    self._logger.debug(traceback.format_exc())
                     pass
             for c in post['comet_sections']['feedback']['story']['story_ufi_container']['story']['feedback_context']['feedback_target_with_context']['comment_list_renderer']['feedback']['comment_rendering_instance_for_feed_location']['comments']['edges']:
                 try:
@@ -281,6 +286,7 @@ class Post:
                     self._logger.debug(f'Extract comment: {comment.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Listener1 extract comment failed: {type(E)}:{E.args}')
+                    self._logger.debug(traceback.format_exc())
                     continue
             if len(self.comments) == 0:
                 stop_event.set()

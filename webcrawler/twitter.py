@@ -4,6 +4,7 @@ import logging
 import random
 import threading
 import time
+import traceback
 
 import dateutil
 import pytz
@@ -55,6 +56,7 @@ class User:
                 tweets = response['data']['user']['result']['timeline']['timeline']['instructions'][1]['entries']
             except Exception as E:
                 self._logger.warning(f'Listener1 extract user failed: {type(E)}:{E.args}')
+                self._logger.debug(traceback.format_exc())
             extract_tweets(tweets)
 
         def extract_tweets(tweets: list):
@@ -93,6 +95,7 @@ class User:
                     self._logger.debug(f'Extract post: {tweet.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Extract tweet failed: {type(E)}:{E.args}')
+                    self._logger.debug(traceback.format_exc())
                     continue
 
         if stop_event is None: stop_event = threading.Event()
@@ -192,6 +195,7 @@ class Tweet:
                 self._parse_tweet(response['data']['tweetResult']['result'])
             except Exception as E:
                 self._logger.warning(f'Listener1 extract tweet failed: {type(E)}:{E.args}')
+                self._logger.debug(traceback.format_exc())
                 return
 
         def on_listener2(r: dict):
@@ -223,6 +227,7 @@ class Tweet:
                         continue
                 except Exception as E:
                     self._logger.warning(f'Listener2 extract comment failed: {type(E)}:{E.args}')
+                    self._logger.debug(traceback.format_exc())
                     continue
 
         if stop_event is None: stop_event = threading.Event()

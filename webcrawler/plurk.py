@@ -3,6 +3,7 @@ import logging
 import queue
 import threading
 import time
+import traceback
 
 import base36
 import dateutil
@@ -92,6 +93,7 @@ class Search:
                                 self.users.update({user.id: user})
                             except Exception as E:
                                 self._logger.warning(f'Extract user failed: {type(E)}:{E.args}')
+                                self._logger.debug(traceback.format_exc())
                                 continue
                     for p in response['plurks']:
                         if len(self.posts):
@@ -136,6 +138,7 @@ class Search:
                             self._logger.debug(f'Extract post: {post.__repr__()}')
                         except Exception as E:
                             self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
+                            self._logger.debug(traceback.format_exc())
                             continue
                     try:
                         next_id.put(self.posts[-1].id)
@@ -241,6 +244,7 @@ class Post:
                                 self.users.update({user.id: user})
                             except Exception as E:
                                 self._logger.warning(f'Extract user failed: {type(E)}:{E.args}')
+                                self._logger.debug(traceback.format_exc())
                                 continue
                     for c in response['responses']:
                         if len(self.comments):
@@ -271,6 +275,7 @@ class Post:
                             self._logger.debug(f'Extract comment: {comment.__repr__()}')
                         except Exception as E:
                             self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}')
+                            self._logger.debug(traceback.format_exc())
                             continue
                         finally:
                             floor += 1

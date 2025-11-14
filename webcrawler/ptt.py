@@ -2,6 +2,7 @@ import datetime
 import logging
 import re
 import time
+import traceback
 
 import dateutil
 import pytz
@@ -58,6 +59,7 @@ class Forum:
                         self._logger.debug(f'Extract post: {post.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
+                    self._logger.debug(traceback.format_exc())
                     continue
             self.posts.extend(posts[::-1])
             next_url = response.select('div#action-bar-container > div.action-bar > div.btn-group-paging')[0].find('a', string='‹ 上頁').get('href')
@@ -118,6 +120,7 @@ class Post:
                 self._logger.debug(f'Extract comment: {comment.__repr__()}')
             except Exception as E:
                 self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}')
+                self._logger.debug(traceback.format_exc())
                 continue
         else:
             self._logger.debug(f'#Comments: {len(self.comments)}')

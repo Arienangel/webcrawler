@@ -4,6 +4,7 @@ import logging
 import random
 import threading
 import time
+import traceback
 
 import dateutil
 import pytz
@@ -56,6 +57,7 @@ class Forum:
                 self._parse_forum(response)
             except Exception as E:
                 self._logger.warning(f'Listener1 extract forum failed: {type(E)}:{E.args}')
+                self._logger.debug(traceback.format_exc())
                 return
 
         def on_listener2(r: dict):
@@ -69,6 +71,7 @@ class Forum:
                         self._parse_forum(forum_data)
             except Exception as E:
                 self._logger.warning(f'Listener2 extract forum failed: {type(E)}:{E.args}')
+                self._logger.debug(traceback.format_exc())
                 return
 
         def on_listener3(r: dict):
@@ -145,6 +148,7 @@ class Forum:
                         self._logger.debug(f'Extract post: {post.__repr__()}')
                     except Exception as E:
                         self._logger.warning(f'Listener3 extract post failed: {type(E)}:{E.args}')
+                        self._logger.debug(traceback.format_exc())
                         continue
 
         if stop_event is None: stop_event = threading.Event()
@@ -280,6 +284,7 @@ class Post:
                     self.share_count = r['interactionStatistic'][2]['userInteractionCount']
                 except Exception as E:
                     self._logger.warning(f'Listener1 extract post failed: {type(E)}:{E.args}')
+                    self._logger.debug(traceback.format_exc())
                     continue
 
         def on_listener2(r: dict):
@@ -350,6 +355,7 @@ class Post:
                 self.activity_avatar = response['activityAvatar']
             except Exception as E:
                 self._logger.warning(f'Listener2 extract post failed: {type(E)}:{E.args}')
+                self._logger.debug(traceback.format_exc())
                 return
 
         def on_listener3(r: dict):
@@ -402,6 +408,7 @@ class Post:
                     self._logger.debug(f'Extract comment: {comment.__repr__()}')
                 except Exception as E:
                     self._logger.warning(f'Listener3 extract comment failed: {type(E)}:{E.args}')
+                    self._logger.debug(traceback.format_exc())
                     continue
             if len(self.comments) == 0:
                 stop_event.set()
