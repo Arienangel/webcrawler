@@ -53,49 +53,7 @@ class Forum:
                 return
             try:
                 response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
-                self.id = response['id']
-                self.name = response['name']
-                self.description = response['description']
-                self.created_time = dateutil.parser.parse(response['createdAt'])
-                self.modified_time = dateutil.parser.parse(response['updatedAt'])
-                self.subscriptionCount = response['subscriptionCount']
-                self.subscribed = response['subscribed']
-                self.read = response['read']
-                self.can_post = response['canPost']
-                self.ignore_post = response['ignorePost']
-                self.invisible = response['invisible']
-                self.is_school = response['isSchool']
-                self.fully_anonymous = response['fullyAnonymous']
-                self.can_use_nickname = response['canUseNickname']
-                self.should_categorized = response['shouldCategorized']
-                self.should_post_categorized = response['shouldPostCategorized']
-                self.has_post_categories = response['hasPostCategories']
-                self.post_title_placeholder = response['postTitlePlaceholder']
-                self.subcategories = response['subcategories']
-                self.topics = response['topics']
-                self.nsfw = response['nsfw']
-                self.media_threshold = response['mediaThreshold']
-                self.limit_countries = response['limitCountries']
-                self.limit_stage = response['limitStage']
-                self.available_layouts = response['availableLayouts']
-                self.hero_image = response['heroImage']['url']
-                self.logo = response['logo']['url']
-                self.post_count_last_30_days = response['postCount']['last30Days']
-                self.favorite = response['favorite']
-                self.is_persona_page = response['isPersonaPage']
-                self.is_featured_page = response['isFeaturedPage']
-                self.enable_private_message = response['enablePrivateMessage']
-                self.restrict_identity_on_comment = response['restrictIdentityOnComment']
-                self.enable_selected_posts = response['enableSelectedPosts']
-                self.supported_reactions = response['supportedReactions']
-                self.display_selected_posts_tab = response['displaySelectedPostsTab']
-                self.allow_mod_manage_selected_posts = response['allowModManageSelectedPosts']
-                self.display_group_chat_entry = response['displayGroupChatEntry']
-                self.enable_hinted_validations = response['enableHintedValidations']
-                self.enable_edited_history = response['enableEditedHistory']
-                self.enable_immersive_video = response['enableImmersiveVideo']
-                self.discussion_volume = response['discussionVolume']
-                self.latest_post_pinned_at = dateutil.parser.parse(response['latestPostPinnedAt']) if 'latestPostPinnedAt' in response else datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
+                self._parse_forumdata(response)
             except Exception as E:
                 self._logger.warning(f'Extract forum failed: {type(E)}:{E.args}')
                 return
@@ -103,6 +61,19 @@ class Forum:
         def on_listener2(r: dict):
             if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
                 self._logger.warning(f'Listener2 timeout')
+                return
+            try:
+                response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
+                for forum_data in response['items']:
+                    if forum_data['alias'] == self.alias:
+                        self._parse_forumdata(forum_data)
+            except Exception as E:
+                self._logger.warning(f'Extract forum failed: {type(E)}:{E.args}')
+                return
+
+        def on_listener3(r: dict):
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener3 timeout')
                 return
             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
             for widget in response['widgets']:
@@ -178,7 +149,8 @@ class Forum:
 
         if stop_event is None: stop_event = threading.Event()
         listener1 = browser.cdp.add_listener(on_listener1, name=f'Listener 1: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/forums')
-        listener2 = browser.cdp.add_listener(on_listener2, name=f'Listener 2: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/globalPaging/page')
+        listener2 = browser.cdp.add_listener(on_listener2, name=f'Listener 2: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/popularForums/GetPage')
+        listener3 = browser.cdp.add_listener(on_listener3, name=f'Listener 3: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/globalPaging/page')
         end_time = time.time() + timeout
         if isinstance(time_until, str): time_until = dateutil.parser.parse(time_until)
         if do_navigate: threading.Thread(target=load_page).start()
@@ -196,7 +168,53 @@ class Forum:
             stop_event.set()
             browser.cdp.remove_listener(listener1)
             browser.cdp.remove_listener(listener2)
+            browser.cdp.remove_listener(listener3)
             self._logger.debug(f'#Posts: {len(self.posts)}')
+
+    def _parse_forumdata(self, forum_data: dict):
+        self.id = forum_data['id']
+        self.name = forum_data['name']
+        self.description = forum_data['description']
+        self.created_time = dateutil.parser.parse(forum_data['createdAt'])
+        self.modified_time = dateutil.parser.parse(forum_data['updatedAt'])
+        self.subscriptionCount = forum_data['subscriptionCount']
+        self.subscribed = forum_data['subscribed']
+        self.read = forum_data['read']
+        self.can_post = forum_data['canPost']
+        self.ignore_post = forum_data['ignorePost']
+        self.invisible = forum_data['invisible']
+        self.is_school = forum_data['isSchool']
+        self.fully_anonymous = forum_data['fullyAnonymous']
+        self.can_use_nickname = forum_data['canUseNickname']
+        self.should_categorized = forum_data['shouldCategorized']
+        self.should_post_categorized = forum_data['shouldPostCategorized']
+        self.has_post_categories = forum_data['hasPostCategories']
+        self.post_title_placeholder = forum_data['postTitlePlaceholder']
+        self.subcategories = forum_data['subcategories']
+        self.topics = forum_data['topics']
+        self.nsfw = forum_data['nsfw']
+        self.media_threshold = forum_data['mediaThreshold']
+        self.limit_countries = forum_data['limitCountries']
+        self.limit_stage = forum_data['limitStage']
+        self.available_layouts = forum_data['availableLayouts']
+        self.hero_image = forum_data['heroImage']['url']
+        self.logo = forum_data['logo']['url']
+        self.post_count_last_30_days = forum_data['postCount']['last30Days']
+        self.favorite = forum_data['favorite']
+        self.is_persona_page = forum_data['isPersonaPage']
+        self.is_featured_page = forum_data['isFeaturedPage']
+        self.enable_private_message = forum_data['enablePrivateMessage']
+        self.restrict_identity_on_comment = forum_data['restrictIdentityOnComment']
+        self.enable_selected_posts = forum_data['enableSelectedPosts']
+        self.supported_reactions = forum_data['supportedReactions']
+        self.display_selected_posts_tab = forum_data['displaySelectedPostsTab']
+        self.allow_mod_manage_selected_posts = forum_data['allowModManageSelectedPosts']
+        self.display_group_chat_entry = forum_data['displayGroupChatEntry']
+        self.enable_hinted_validations = forum_data['enableHintedValidations']
+        self.enable_edited_history = forum_data['enableEditedHistory']
+        self.enable_immersive_video = forum_data['enableImmersiveVideo']
+        self.discussion_volume = forum_data['discussionVolume']
+        self.latest_post_pinned_at = dateutil.parser.parse(forum_data['latestPostPinnedAt']) if 'latestPostPinnedAt' in forum_data else datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
 
 
 class Post:
