@@ -53,9 +53,9 @@ class Forum:
                 return
             try:
                 response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
-                self._parse_forumdata(response)
+                self._parse_forum(response)
             except Exception as E:
-                self._logger.warning(f'Extract forum failed: {type(E)}:{E.args}')
+                self._logger.warning(f'Listener1 extract forum failed: {type(E)}:{E.args}')
                 return
 
         def on_listener2(r: dict):
@@ -66,9 +66,9 @@ class Forum:
                 response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
                 for forum_data in response['items']:
                     if forum_data['alias'] == self.alias:
-                        self._parse_forumdata(forum_data)
+                        self._parse_forum(forum_data)
             except Exception as E:
-                self._logger.warning(f'Extract forum failed: {type(E)}:{E.args}')
+                self._logger.warning(f'Listener2 extract forum failed: {type(E)}:{E.args}')
                 return
 
         def on_listener3(r: dict):
@@ -144,7 +144,7 @@ class Forum:
                         self.posts.append(post)
                         self._logger.debug(f'Extract post: {post.__repr__()}')
                     except Exception as E:
-                        self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
+                        self._logger.warning(f'Listener3 extract post failed: {type(E)}:{E.args}')
                         continue
 
         if stop_event is None: stop_event = threading.Event()
@@ -171,7 +171,7 @@ class Forum:
             browser.cdp.remove_listener(listener3)
             self._logger.debug(f'#Posts: {len(self.posts)}')
 
-    def _parse_forumdata(self, forum_data: dict):
+    def _parse_forum(self, forum_data: dict):
         self.id = forum_data['id']
         self.name = forum_data['name']
         self.description = forum_data['description']
@@ -279,7 +279,7 @@ class Post:
                     self.comment_count = r['interactionStatistic'][1]['userInteractionCount']
                     self.share_count = r['interactionStatistic'][2]['userInteractionCount']
                 except Exception as E:
-                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
+                    self._logger.warning(f'Listener1 extract post failed: {type(E)}:{E.args}')
                     continue
 
         def on_listener2(r: dict):
@@ -349,7 +349,7 @@ class Post:
                 self.in_review = response['inReview']
                 self.activity_avatar = response['activityAvatar']
             except Exception as E:
-                self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
+                self._logger.warning(f'Listener2 extract post failed: {type(E)}:{E.args}')
                 return
 
         def on_listener3(r: dict):
@@ -401,7 +401,7 @@ class Post:
                     self.comments.append(comment)
                     self._logger.debug(f'Extract comment: {comment.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}')
+                    self._logger.warning(f'Listener3 extract comment failed: {type(E)}:{E.args}')
                     continue
             if len(self.comments) == 0:
                 stop_event.set()

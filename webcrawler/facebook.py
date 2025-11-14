@@ -63,7 +63,7 @@ class Page:
                     self.alias = posts[0]['comet_sections']['content']['story']['actors'][0]['url'].split('/')[-1]
                     self.name = posts[0]['comet_sections']['content']['story']['actors'][0]['name']
                 except Exception as E:
-                    self._logger.warning(f'Extract page failed: {type(E)}:{E.args}')
+                    self._logger.warning(f'Listener1 extract page failed: {type(E)}:{E.args}')
                     pass
             extract_posts(posts)
 
@@ -78,7 +78,7 @@ class Page:
                 if 'node' in L[0]['data']: posts.append(L[0]['data']['node']['timeline_list_feed_units']['edges'][0]['node'])
                 posts.extend([i['data']['node'] for i in L[1:] if 'node' in i['data']])
             except Exception as E:
-                self._logger.warning(f'Extract page failed: {type(E)}:{E.args}')
+                self._logger.warning(f'Listener2 extract page failed: {type(E)}:{E.args}')
                 pass
             extract_posts(posts)
 
@@ -280,7 +280,7 @@ class Post:
                     self.comments.append(comment)
                     self._logger.debug(f'Extract comment: {comment.__repr__()}')
                 except Exception as E:
-                    self._logger.warning(f'Extract comment failed: {type(E)}:{E.args}')
+                    self._logger.warning(f'Listener1 extract comment failed: {type(E)}:{E.args}')
                     continue
             if len(self.comments) == 0:
                 stop_event.set()
