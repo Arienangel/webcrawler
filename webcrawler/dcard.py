@@ -52,13 +52,15 @@ class Forum:
             if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
                 self._logger.warning(f'Listener1 timeout')
                 return
-            try:
-                response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
-                self._parse_forum(response)
-            except Exception as E:
-                self._logger.warning(f'Listener1 extract forum failed: {type(E)}:{E.args}')
-                self._logger.debug(traceback.format_exc())
-                return
+            response = BeautifulSoup(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'], features="html.parser")
+            for r in response.find_all('script', type="application/json", id="__NEXT_DATA__"):
+                try:
+                    r = json.loads(r.text)['props']['dehydratedState']['queries'][2]['state']['data']
+                    self._parse_forum(r)
+                except Exception as E:
+                    self._logger.warning(f'Listener1 extract post failed: {type(E)}:{E.args}')
+                    self._logger.debug(traceback.format_exc())
+                    continue
 
         def on_listener2(r: dict):
             if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
@@ -66,9 +68,7 @@ class Forum:
                 return
             try:
                 response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
-                for forum_data in response['items']:
-                    if forum_data['alias'] == self.alias:
-                        self._parse_forum(forum_data)
+                self._parse_forum(response)
             except Exception as E:
                 self._logger.warning(f'Listener2 extract forum failed: {type(E)}:{E.args}')
                 self._logger.debug(traceback.format_exc())
@@ -77,6 +77,20 @@ class Forum:
         def on_listener3(r: dict):
             if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
                 self._logger.warning(f'Listener3 timeout')
+                return
+            try:
+                response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
+                for forum_data in response['items']:
+                    if forum_data['alias'] == self.alias:
+                        self._parse_forum(forum_data)
+            except Exception as E:
+                self._logger.warning(f'Listener3 extract forum failed: {type(E)}:{E.args}')
+                self._logger.debug(traceback.format_exc())
+                return
+
+        def on_listener4(r: dict):
+            if not browser.cdp.check_loading_finished(r['params']['requestId'], blocking=True, timeout=timeout):
+                self._logger.warning(f'Listener4 timeout')
                 return
             response = json.loads(browser.cdp.get_received_by_id(browser.cdp.send('Network.getResponseBody', requestId=r['params']['requestId']))['result']['body'])
             for widget in response['widgets']:
@@ -147,14 +161,15 @@ class Forum:
                         self.posts.append(post)
                         self._logger.debug(f'Extract post: {post.__repr__()}')
                     except Exception as E:
-                        self._logger.warning(f'Listener3 extract post failed: {type(E)}:{E.args}')
+                        self._logger.warning(f'Listener4 extract post failed: {type(E)}:{E.args}')
                         self._logger.debug(traceback.format_exc())
                         continue
 
         if stop_event is None: stop_event = threading.Event()
-        listener1 = browser.cdp.add_listener(on_listener1, name=f'Listener 1: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/forums')
-        listener2 = browser.cdp.add_listener(on_listener2, name=f'Listener 2: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/popularForums/GetPage')
-        listener3 = browser.cdp.add_listener(on_listener3, name=f'Listener 3: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/globalPaging/page')
+        listener1 = browser.cdp.add_listener(on_listener1, name=f'Listener 1: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain=self.url)
+        listener2 = browser.cdp.add_listener(on_listener2, name=f'Listener 2: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/forums')
+        listener3 = browser.cdp.add_listener(on_listener3, name=f'Listener 3: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/popularForums/GetPage')
+        listener4 = browser.cdp.add_listener(on_listener4, name=f'Listener 4: {self.__repr__()}', cdp_method='Network.responseReceived', url_contain='https://www.dcard.tw/service/api/v2/globalPaging/page')
         end_time = time.time() + timeout
         if isinstance(time_until, str): time_until = dateutil.parser.parse(time_until)
         if do_navigate: threading.Thread(target=load_page).start()
@@ -173,6 +188,7 @@ class Forum:
             browser.cdp.remove_listener(listener1)
             browser.cdp.remove_listener(listener2)
             browser.cdp.remove_listener(listener3)
+            browser.cdp.remove_listener(listener4)
             self._logger.debug(f'#Posts: {len(self.posts)}')
 
     def _parse_forum(self, forum_data: dict):
@@ -218,7 +234,13 @@ class Forum:
         self.enable_edited_history = forum_data['enableEditedHistory']
         self.enable_immersive_video = forum_data['enableImmersiveVideo']
         self.discussion_volume = forum_data['discussionVolume']
-        self.latest_post_pinned_at = dateutil.parser.parse(forum_data['latestPostPinnedAt']) if 'latestPostPinnedAt' in forum_data else datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
+        if 'latestPostPinnedAt' in forum_data:
+            if forum_data['latestPostPinnedAt']:
+                self.latest_post_pinned_at = dateutil.parser.parse(forum_data['latestPostPinnedAt'])
+            else:
+                self.latest_post_pinned_at = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
+        else:
+            self.latest_post_pinned_at = datetime.datetime.fromtimestamp(0, tz=pytz.UTC)
 
 
 class Post:
