@@ -31,8 +31,8 @@ class Forum:
     def get(self, browser: ChromeProcess, min_count: int = 10, time_until: datetime.datetime | str = None, timeout: float = 30, stop_event: threading.Event = None, do_navigate: bool = True):
 
         def load_page():
-            browser.get(self.url, blocking=True, timeout=timeout)
             self._logger.debug(f'Connect: {self.url}')
+            browser.get(self.url, blocking=True, timeout=timeout)
             time.sleep(8)
             while not stop_event.is_set():
                 if 'https://challenges.cloudflare.com/turnstile' in browser.page_source:
@@ -265,8 +265,8 @@ class Post:
     def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = None, do_navigate: bool = True):
 
         def load_page():
-            browser.get(self.url, blocking=True, timeout=timeout)
             self._logger.debug(f'Connect: {self.url}')
+            browser.get(self.url, blocking=True, timeout=timeout)
             time.sleep(8)
             while not stop_event.is_set():
                 if 'https://challenges.cloudflare.com/turnstile' in browser.page_source:

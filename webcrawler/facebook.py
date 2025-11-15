@@ -33,8 +33,8 @@ class Page:
     def get(self, browser: ChromeProcess, min_count: int = 5, time_until: datetime.datetime | str = None, timeout: float = 30, stop_event: threading.Event = None, do_navigate: bool = True):
 
         def load_page():
-            browser.get(self.url, blocking=True, timeout=timeout)
             self._logger.debug(f'Connect: {self.url}')
+            browser.get(self.url, blocking=True, timeout=timeout)
             time.sleep(5)
             while not stop_event.is_set():
                 browser.cdp.send('Runtime.evaluate', expression='''document.querySelector('div[role="dialog"] i.x1b0d499.x1d69dk1').click()''')
@@ -154,8 +154,8 @@ class Post:
     def get(self, browser: ChromeProcess, min_count: int = 10, timeout: float = 10, stop_event: threading.Event = None, do_navigate: bool = True):
 
         def load_page():
-            browser.get(self.url, blocking=True, timeout=timeout)
             self._logger.debug(f'Connect: {self.url}')
+            browser.get(self.url, blocking=True, timeout=timeout)
             time.sleep(5)
             while not stop_event.is_set():
                 browser.scroll(

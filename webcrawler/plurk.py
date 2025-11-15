@@ -40,8 +40,8 @@ class Search:
 
         def load_page():
             while not stop_event.is_set():
-                response = session.post(self.api_url, self.api_body, timeout=timeout)
                 self._logger.debug(f'Connect: {self.api_url} {self.api_body}')
+                response = session.post(self.api_url, self.api_body, timeout=timeout)
                 if 'application/json' not in response.headers['Content-Type']:
                     self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
                     stop_event.set()
@@ -200,8 +200,8 @@ class Post:
 
         def load_page():
             while not stop_event.is_set():
-                response = session.post(self.api_url, self.api_body, timeout=timeout)
                 self._logger.debug(f'Connect: {self.api_url} {self.api_body}')
+                response = session.post(self.api_url, self.api_body, timeout=timeout)
                 if response.headers['Content-Type'] != 'application/json':
                     self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
                     stop_event.set()
