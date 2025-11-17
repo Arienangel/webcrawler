@@ -259,6 +259,7 @@ class Post:
                                 else:
                                     comment.author = User(99999)
                                     comment.author.handle = c['handle']
+                                    comment.author.nickname = c['handle']
                                     self.users.update({comment.author.handle: comment.author})
                             else:
                                 comment.author = self.users[c['user_id']]
