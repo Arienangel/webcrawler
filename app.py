@@ -522,7 +522,7 @@ if __name__ == '__main__':
             ]))
             logger.info(f"Add dcard job: {forums}")
         except Exception as E:
-            logger.warning(f'Add dcard job failed: {type(E)}:{E.args}')
+            logger.error(f'Add dcard job failed: {type(E)}:{E.args}')
     if config['webcrawler']['facebook']['enable']:
         try:
             pages = config['webcrawler']['facebook']['pages']
@@ -545,7 +545,7 @@ if __name__ == '__main__':
             ]))
             logger.info(f"Add facebook job: {pages}")
         except Exception as E:
-            logger.warning(f'Add facebook job failed: {type(E)}:{E.args}')
+            logger.error(f'Add facebook job failed: {type(E)}:{E.args}')
     if config['webcrawler']['plurk']['enable']:
         try:
             searches = config['webcrawler']['plurk']['searches']
@@ -565,7 +565,7 @@ if __name__ == '__main__':
             ]))
             logger.info(f"Add plurk job: {searches}")
         except Exception as E:
-            logger.warning(f'Add plurk job failed: {type(E)}:{E.args}')
+            logger.error(f'Add plurk job failed: {type(E)}:{E.args}')
     if config['webcrawler']['ptt']['enable']:
         try:
             forums = config['webcrawler']['ptt']['forums']
@@ -585,7 +585,7 @@ if __name__ == '__main__':
             ]))
             logger.info(f"Add ptt job: {forums}")
         except Exception as E:
-            logger.warning(f'Add ptt job failed: {type(E)}:{E.args}')
+            logger.error(f'Add ptt job failed: {type(E)}:{E.args}')
     try:
         [job.start() for job in jobs]
         [job.join() for job in jobs]
