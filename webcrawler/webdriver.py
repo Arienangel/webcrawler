@@ -161,8 +161,8 @@ class CDP:
         with requests.Session() as session:
             while time.time() < end_time:
                 try:
-                    self.websocket_url = session.get(f'http://{self.remote_debugging_host}:{self.remote_debugging_port}/json').json()[0]['webSocketDebuggerUrl']
                     time.sleep(0.5)
+                    self.websocket_url = session.get(f'http://{self.remote_debugging_host}:{self.remote_debugging_port}/json').json()[0]['webSocketDebuggerUrl']
                     break
                 except:
                     continue

@@ -29,8 +29,12 @@ class Forum:
         session.headers.update({"Cookie": "over18=1"})
         end_time = time.time() + timeout
         while (time.time() < end_time) and (len(self.posts) < min_count):
-            self._logger.debug(f'Connect: {url}')
-            response = BeautifulSoup(session.get(url, timeout=timeout).text, features="html.parser")
+            try:
+                self._logger.debug(f'Connect: {url}')
+                response = BeautifulSoup(session.get(url, timeout=timeout).text, features="html.parser")
+            except Exception as E:
+                self._logger.warning(f'Extract forum failed: {type(E)}:{E.args}')
+                continue
             posts = []
             for p in response.select('div.r-list-container > div'):
                 try:

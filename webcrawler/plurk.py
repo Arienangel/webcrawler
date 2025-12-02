@@ -40,15 +40,19 @@ class Search:
 
         def load_page():
             while not stop_event.is_set():
-                self._logger.debug(f'Connect: {self.api_url} {self.api_body}')
-                response = session.post(self.api_url, self.api_body, timeout=timeout)
-                if 'application/json' not in response.headers['Content-Type']:
-                    self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
-                    stop_event.set()
-                    return
-                response_queue.put(response.json())
-                time.sleep(16)
                 try:
+                    self._logger.debug(f'Connect: {self.api_url} {self.api_body}')
+                    response = session.post(self.api_url, self.api_body, timeout=timeout)
+                    if 'application/json' not in response.headers['Content-Type']:
+                        self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
+                        stop_event.set()
+                        return
+                except Exception as E:
+                    self._logger.warning(f'Extract search failed: {type(E)}:{E.args}')
+                    continue
+                try:
+                    response_queue.put(response.json())
+                    time.sleep(16)
                     self.api_body.update({'after_id': next_id.get(timeout=timeout)})
                 except queue.ShutDown:
                     return
@@ -200,15 +204,19 @@ class Post:
 
         def load_page():
             while not stop_event.is_set():
-                self._logger.debug(f'Connect: {self.api_url} {self.api_body}')
-                response = session.post(self.api_url, self.api_body, timeout=timeout)
-                if response.headers['Content-Type'] != 'application/json':
-                    self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
-                    stop_event.set()
-                    return
-                response_queue.put(response.json())
-                time.sleep(16)
                 try:
+                    self._logger.debug(f'Connect: {self.api_url} {self.api_body}')
+                    response = session.post(self.api_url, self.api_body, timeout=timeout)
+                    if response.headers['Content-Type'] != 'application/json':
+                        self._logger.warning(f'Not a json file: {self.api_url} {self.api_body}')
+                        stop_event.set()
+                        return
+                except Exception as E:
+                    self._logger.warning(f'Extract post failed: {type(E)}:{E.args}')
+                    continue
+                try:
+                    response_queue.put(response.json())
+                    time.sleep(16)
                     self.api_body.update({'from_response_id': next_id.get(timeout=timeout)})
                 except queue.ShutDown:
                     return
