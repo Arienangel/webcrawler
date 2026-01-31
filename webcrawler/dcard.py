@@ -157,7 +157,7 @@ class Forum:
                         post.is_blocked = p['isBlocked']
                         post.excerpt_comments = p['excerptComments']
                         post.in_review = p['inReview']
-                        post.activity_avatar = p['activityAvatar']
+                        post.activity_avatar = p['activityAvatar'] if 'activityAvatar' in p else ''
                         self.posts.append(post)
                         self._logger.debug(f'Extract post: {post.__repr__()}')
                     except Exception as E:
@@ -374,7 +374,7 @@ class Post:
                 self.is_blocked = response['isBlocked']
                 self.excerpt_comments = response['excerptComments']
                 self.in_review = response['inReview']
-                self.activity_avatar = response['activityAvatar']
+                self.activity_avatar = response['activityAvatar'] if 'activityAvatar' in response else ''
             except Exception as E:
                 self._logger.warning(f'Listener2 extract post failed: {type(E)}:{E.args}')
                 self._logger.debug(traceback.format_exc())
@@ -425,7 +425,7 @@ class Post:
                     comment.identity_idV3 = c['identityIdV3'] if 'identityIdV3' in c else ''
                     comment.edited = c['edited']
                     comment.post_avatar = c['postAvatar']
-                    comment.activity_avatar = c['activityAvatar']
+                    comment.activity_avatar = c['activityAvatar'] if 'activityAvatar' in c else ''
                     self.comments.append(comment)
                     self._logger.debug(f'Extract comment: {comment.__repr__()}')
                 except Exception as E:
