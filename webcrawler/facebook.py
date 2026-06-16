@@ -178,8 +178,11 @@ class Post:
                 try:
                     for i in json.loads(r.text)['require'][0][3][0]['__bbox']['require']:
                         if i[0] == 'RelayPrefetchedStreamCache':
-                            post = i[3][1]['__bbox']['result']['data']['node']
-                            break
+                            if 'node' in i[3][1]['__bbox']['result']['data']:
+                                post = i[3][1]['__bbox']['result']['data']['node']
+                                break
+                            else:
+                                return
                     else:
                         continue
                     if self.page.id != int(post['comet_sections']['content']['story']['actors'][0]['id']):

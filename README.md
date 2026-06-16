@@ -17,6 +17,7 @@
   - Chrome Webstore (optional): [https://github.com/NeverDecaf/chromium-web-store?tab=readme-ov-file#read-this-first](https://github.com/NeverDecaf/chromium-web-store?tab=readme-ov-file#read-this-first) 
   - uBlock Origin: [https://chromewebstore.google.com/detail/cjpalhdlnbpafiamejdnhcphjbkeiagm](https://chromewebstore.google.com/detail/cjpalhdlnbpafiamejdnhcphjbkeiagm)
   - User-Agent Switcher and Manager: [https://chromewebstore.google.com/detail/bhchdcejhohfmigjafbampogmaanbfkg](https://chromewebstore.google.com/detail/bhchdcejhohfmigjafbampogmaanbfkg)
+  - Always active Window - Always Visible: [https://chromewebstore.google.com/detail/ehllkhjndgnlokhomdlhgbineffifcbj](https://chromewebstore.google.com/detail/always-active-window-alwa/ehllkhjndgnlokhomdlhgbineffifcbj)
 - Edit `config.yaml`
   - Modify `user_data_dir`, every website need one **unique** user_data_dir
   - Modify `remote_debugging_port`, different port for each profile
